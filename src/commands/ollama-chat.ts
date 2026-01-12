@@ -75,7 +75,7 @@ export class OllamaChat extends ChatCommand {
         try {
             waitMessage = await bot.sendMessage({
                 chat_id: chatId,
-                text: Environment.waitText + (maxSize !== null ? `\nImage ${maxSize.width}x${maxSize.height}px` : ""),
+                text: Environment.waitText + (maxSize !== null ? `\n🤓 Image ${maxSize.width}x${maxSize.height}px` : ""),
                 reply_parameters: {
                     chat_id: chatId,
                     message_id: msg.message_id
@@ -135,7 +135,7 @@ export class OllamaChat extends ChatCommand {
                         waitMessage.text = currentText;
                         await MessageStore.put(waitMessage);
 
-                        await replyToMessage(waitMessage, `⏱️ ${diff}s` + (maxSize !== null ? `\nImage ${maxSize.width}x${maxSize.height}px` : ""));
+                        await replyToMessage(waitMessage, `⏱️ ${diff}s` + (maxSize !== null ? `\n🤓 Image ${maxSize.width}x${maxSize.height}px` : ""));
                         break;
                     }
                 }
