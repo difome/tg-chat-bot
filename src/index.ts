@@ -129,11 +129,6 @@ async function main() {
     console.log(`TEST_ENVIRONMENT: ${Environment.TEST_ENVIRONMENT}\nDATA_PATH: ${Environment.DATA_PATH}`);
 
     try {
-        const messages = await messageDao.getAll();
-        const users = await userDao.getAll();
-        console.log("Messages: ", messages);
-        console.log("Users: ", users);
-
         const results = await Promise.all(
             [
                 initSystemSpecs(), readData(), retrieveAnswers(),
