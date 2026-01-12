@@ -34,7 +34,7 @@ export class OllamaChat extends ChatCommand {
 
         let imageFilePath: string | null = null;
 
-        const maxSize = await getPhotoMaxSize(msg.photo, 600);
+        const maxSize = await getPhotoMaxSize(msg.photo);
         if (maxSize) {
             const res = await axios.get<ArrayBuffer>(maxSize.url, {responseType: "arraybuffer"});
             const src = Buffer.from(res.data);

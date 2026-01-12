@@ -22,6 +22,8 @@ export class Environment {
     static OLLAMA_API_KEY?: string;
     static SYSTEM_PROMPT?: string;
 
+    static MAX_PHOTO_SIZE: number;
+
     static GEMINI_API_KEY?: string;
 
     static waitText = "⏳ Дайте-ка подумать...";
@@ -44,6 +46,8 @@ export class Environment {
         Environment.OLLAMA_ADDRESS = process.env.OLLAMA_ADDRESS;
         Environment.OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
         Environment.SYSTEM_PROMPT = process.env.SYSTEM_PROMPT?.trim();
+
+        Environment.MAX_PHOTO_SIZE = Number(process.env.MAX_PHOTO_SIZE || "1280");
 
         Environment.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
     }

@@ -754,7 +754,7 @@ export function getRuntimeInfo(): RuntimeInfo {
 
 export type PhotoMaxSize = { width: number, height: number, url: string; unique_file_id: string; };
 
-export async function getPhotoMaxSize(photos: PhotoSize[], target: number = 1280): Promise<PhotoMaxSize | null> {
+export async function getPhotoMaxSize(photos: PhotoSize[], target: number = Environment.MAX_PHOTO_SIZE): Promise<PhotoMaxSize | null> {
     if (!photos) return null;
 
     photos = photos.filter(p => Math.max(p.width, p.height) <= target);
