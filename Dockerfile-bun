@@ -9,7 +9,7 @@ COPY . .
 RUN bun run bun:build
 
 # only prod dependencies
-RUN bun prune --omit=dev
+RUN rm -rf node_modules && bun install --frozen-lockfile --production
 
 # ---- runtime ----
 FROM oven/bun:alpine AS runner
