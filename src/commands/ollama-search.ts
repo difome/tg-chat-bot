@@ -29,7 +29,7 @@ export class OllamaSearch extends ChatCommand {
                 parse_mode: "Markdown"
             });
 
-            const results = await ollama.webSearch({query: match?.[1]});
+            const results = await ollama.webSearch({query: match?.[2]});
             console.log("results", results);
 
             let message = "Результаты:\n\n";
