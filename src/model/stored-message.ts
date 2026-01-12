@@ -3,6 +3,6 @@ export type StoredMessage = {
     messageId: number;
     replyToMessageId?: number | null;
     fromId: number;
-    text: string;
+    text?: string;
     date: number;
 };

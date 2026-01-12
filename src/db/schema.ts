@@ -5,7 +5,7 @@ export const messagesTable = sqliteTable("messages", {
     chatId: int().notNull(),
     replyToMessageId: int(),
     fromId: int().notNull(),
-    text: text().notNull(),
+    text: text(),
     date: int().notNull(),
 });
 
