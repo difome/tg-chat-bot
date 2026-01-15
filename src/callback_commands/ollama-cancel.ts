@@ -2,6 +2,7 @@ import {CallbackCommand} from "../base/callback-command";
 import {CallbackQuery} from "typescript-telegram-bot-api";
 import {abortOllamaRequest, bot, getOllamaRequest} from "../index";
 import {logError} from "../util/utils";
+import {Environment} from "../common/environment";
 
 export class OllamaCancel extends CallbackCommand {
 
@@ -18,7 +19,7 @@ export class OllamaCancel extends CallbackCommand {
 
         const request = getOllamaRequest(uuid);
         if (!request) return;
-        if (request.fromId !== fromId) return;
+        if (request.fromId !== fromId && fromId !== Environment.CREATOR_ID) return;
 
         const aborted = abortOllamaRequest(uuid);
         console.log(`aborted request ${uuid}:`, aborted);
