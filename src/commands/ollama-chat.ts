@@ -121,11 +121,9 @@ export class OllamaChat extends ChatCommand {
             try {
                 for await (const chunk of stream) {
                     if (!getOllamaRequest(uuid).done) {
-                        const content = chunk.message.content;
-                        currentText += content;
+                        currentText += chunk.message.content;
 
-                        const length = currentText.length;
-                        if (length > 4096) {
+                        if (currentText.length > 4096) {
                             currentText = currentText.slice(0, 4093) + "...";
                             shouldBreak = true;
                         }
@@ -137,7 +135,7 @@ export class OllamaChat extends ChatCommand {
                         isOver = true;
 
                         console.log("messageText", currentText);
-                        console.log("length", length);
+                        console.log("length", currentText.length);
 
                         if (shouldBreak) {
                             console.log("break", true);
@@ -166,7 +164,7 @@ export class OllamaChat extends ChatCommand {
                 await editor.stop();
             }
         } catch (error) {
-            if (error.message === "This operation was aborted") return;
+            if (error.message.toLowerCase().includes("aborted")) return;
 
             console.error(error);
             await replyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
