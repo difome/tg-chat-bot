@@ -35,13 +35,11 @@ import {OllamaPrompt} from "./commands/ollama-prompt";
 import {AdminsAdd} from "./commands/admins-add";
 import {AdminsRemove} from "./commands/admins-remove";
 import {Shutdown} from "./commands/shutdown";
-import {OllamaKill} from "./commands/ollama-kill";
 import {Leave} from "./commands/leave";
 import {OllamaChat} from "./commands/ollama-chat";
 import {Start} from "./commands/start";
 import {MessageStore} from "./common/message-store";
 import {PrefixResponse} from "./commands/prefix-response";
-import {GoogleGenAI} from "@google/genai";
 import {GeminiChat} from "./commands/gemini-chat";
 import {Choice} from "./commands/choice";
 import {Coin} from "./commands/coin";
@@ -57,6 +55,7 @@ import {UserStore} from "./common/user-store";
 import {OllamaRequest} from "./model/ollama-request";
 import {CallbackCommand} from "./base/callback-command";
 import {OllamaCancel} from "./callback_commands/ollama-cancel";
+import {MistralChat} from "./commands/mistral-chat";
 
 process.setUncaughtExceptionCaptureCallback(console.error);
 
@@ -100,8 +99,6 @@ export function abortOllamaRequest(uuid: string): boolean {
         return false;
     }
 }
-
-export const googleAi = new GoogleGenAI({apiKey: Environment.GEMINI_API_KEY});
 
 export let systemInfoText: string = "";
 
@@ -149,7 +146,7 @@ export const callbackCommands: CallbackCommand[] = [
 ];
 
 if (Environment.OLLAMA_ADDRESS && Environment.OLLAMA_MODEL && Environment.SYSTEM_PROMPT) {
-    chatCommands.push(new OllamaChat(), new OllamaPrompt(), new OllamaKill());
+    chatCommands.push(new OllamaChat(), new OllamaPrompt());
 }
 
 if (Environment.OLLAMA_API_KEY) {
@@ -158,6 +155,10 @@ if (Environment.OLLAMA_API_KEY) {
 
 if (Environment.GEMINI_API_KEY) {
     chatCommands.push(new GeminiChat());
+}
+
+if (Environment.MISTRAL_API_KEY) {
+    chatCommands.push(new MistralChat());
 }
 
 async function main() {

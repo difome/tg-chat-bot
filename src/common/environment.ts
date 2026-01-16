@@ -25,6 +25,7 @@ export class Environment {
     static MAX_PHOTO_SIZE: number;
 
     static GEMINI_API_KEY?: string;
+    static MISTRAL_API_KEY?: string;
 
     static waitText = "⏳ Дайте-ка подумать...";
 
@@ -50,6 +51,7 @@ export class Environment {
         Environment.MAX_PHOTO_SIZE = Number(process.env.MAX_PHOTO_SIZE || "1280");
 
         Environment.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        Environment.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
     }
 
     static setAdmins(admins: Set<number>) {

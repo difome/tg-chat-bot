@@ -1,4 +1,6 @@
 import {ChatCommand} from "../base/chat-command";
+import {Requirements} from "../base/requirements";
+import {Requirement} from "../base/requirement";
 import {Message} from "typescript-telegram-bot-api";
 import {
     collectReplyChainText,
@@ -11,47 +13,45 @@ import {
 import {Environment} from "../common/environment";
 import {bot} from "../index";
 import {MessageStore} from "../common/message-store";
-import {Requirements} from "../base/requirements";
-import {Requirement} from "../base/requirement";
-import {ApiError, GoogleGenAI} from "@google/genai";
+import {Mistral} from "@mistralai/mistralai";
 
-export class GeminiChat extends ChatCommand {
-    regexp = /^\/gemini\s([^]+)/i;
-    title = "/gemini";
-    description = "Chat with AI (Gemini)";
+export class MistralChat extends ChatCommand {
+    regexp = /^\/mistral\s([^]+)/i;
+    title = "/mistral";
+    description = "Chat with AI (Mistral)";
 
     requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
-    private googleAi = new GoogleGenAI({apiKey: Environment.GEMINI_API_KEY});
+    private mistralAi = new Mistral({apiKey: Environment.MISTRAL_API_KEY});
 
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         console.log("match", match);
-        return this.executeGemini(msg, match?.[1]);
+        return this.executeMistral(msg, match?.[1]);
     }
 
-    async executeGemini(msg: Message, text: string): Promise<void> {
+    async executeMistral(msg: Message, text: string): Promise<void> {
         if (!text || text.trim().length === 0) return;
 
         const chatId = msg.chat.id;
 
-        const messageParts = await collectReplyChainText(msg, "/gemini");
+        const messageParts = await collectReplyChainText(msg, "/mistral");
         console.log("MESSAGE PARTS", messageParts);
 
         const chatMessages = messageParts.map(part => {
             return {
-                role: part.bot ? "ASSISTANT" : "USER",
+                role: part.bot ? "assistant" : "user",
                 content: part.content
             };
         });
         chatMessages.reverse();
-        chatMessages.unshift({role: "SYSTEM", content: Environment.SYSTEM_PROMPT});
+        chatMessages.unshift({role: "system", content: Environment.SYSTEM_PROMPT});
 
-        let chatContent = "";
-        for (const part of chatMessages) {
-            chatContent += `${part.role.toUpperCase()}:\n${part.content}\n\n`;
-        }
+        // let chatContent = "";
+        // for (const part of chatMessages) {
+            // chatContent += `${part.role.toUpperCase()}:\n${part.content}\n\n`;
+        // }
 
-        chatContent = chatContent.trim();
+        // chatContent = chatContent.trim();
 
         let waitMessage: Message;
 
@@ -67,9 +67,9 @@ export class GeminiChat extends ChatCommand {
                 }
             });
 
-            const stream = await this.googleAi.models.generateContentStream({
-                model: "gemini-2.5-flash",
-                contents: chatContent,
+            const stream = await this.mistralAi.chat.stream({
+                model: "mistral-small-latest",
+                messages: chatMessages as any
             });
 
             let messageText = "";
@@ -88,8 +88,11 @@ export class GeminiChat extends ChatCommand {
 
             try {
                 for await (const chunk of stream) {
-                    const text = chunk.text;
+                    // const text = chunk.text;
+                    const text = chunk.data.choices[0].delta.content;
+                    console.log("chunk", chunk);
 
+                    // const text = "";
                     const length = (messageText + text).length;
                     if (length > 4096) {
                         messageText = messageText.slice(0, 4093) + "...";
@@ -130,12 +133,12 @@ export class GeminiChat extends ChatCommand {
         } catch (error) {
             console.error(error);
 
-            if (error instanceof ApiError) {
-                if (error.status === 429) {
-                    await replyToMessage(waitMessage, "На сегодня всё, лимиты закончились.").catch(logError);
-                    return;
-                }
-            }
+            // if (error instanceof ApiError) {
+            //     if (error.status === 429) {
+            //         await replyToMessage(waitMessage, "На сегодня всё, лимиты закончились.").catch(logError);
+            //         return;
+            //     }
+            // }
 
             await replyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
