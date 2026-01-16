@@ -6,6 +6,7 @@ import {
     collectReplyChainText,
     editMessageText,
     escapeMarkdownV2Text,
+    getPhotoMaxSize,
     logError,
     replyToMessage,
     startIntervalEditor
@@ -14,6 +15,9 @@ import {Environment} from "../common/environment";
 import {bot} from "../index";
 import {MessageStore} from "../common/message-store";
 import {Mistral} from "@mistralai/mistralai";
+import path from "node:path";
+import fs from "node:fs";
+import axios from "axios";
 
 export class MistralChat extends ChatCommand {
     regexp = /^\/mistral\s([^]+)/i;
@@ -34,24 +38,54 @@ export class MistralChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
+        let imageFilePath: string | null = null;
+
+        const maxSize = await getPhotoMaxSize(msg.photo);
+        if (maxSize) {
+            const imagePath = path.join(Environment.DATA_PATH, "temp");
+            if (!fs.existsSync(imagePath)) {
+                fs.mkdirSync(imagePath);
+            }
+
+            imageFilePath = path.join(imagePath, maxSize.unique_file_id + ".jpg");
+            if (!fs.existsSync(imageFilePath)) {
+                const res = await axios.get<ArrayBuffer>(maxSize.url, {responseType: "arraybuffer"});
+                const src = Buffer.from(res.data);
+
+                try {
+                    fs.writeFileSync(imageFilePath, src);
+                } catch (e) {
+                    console.error(e);
+                    imageFilePath = null;
+                }
+            }
+        }
+
         const messageParts = await collectReplyChainText(msg, "/mistral");
         console.log("MESSAGE PARTS", messageParts);
 
-        const chatMessages = messageParts.map(part => {
+        const chatMessages = messageParts.map((part, i) => {
+            const content = [];
+            content.push({
+                type: "text",
+                text: part.content
+            });
+
+            if (imageFilePath && i === 0) {
+                const base64Image = Buffer.from(fs.readFileSync(imageFilePath)).toString("base64");
+                content.push({
+                    type: "image_url",
+                    imageUrl: "data:image/jpeg;base64," + base64Image
+                });
+            }
+
             return {
                 role: part.bot ? "assistant" : "user",
-                content: part.content
+                content: content,
             };
         });
         chatMessages.reverse();
-        chatMessages.unshift({role: "system", content: Environment.SYSTEM_PROMPT});
-
-        // let chatContent = "";
-        // for (const part of chatMessages) {
-            // chatContent += `${part.role.toUpperCase()}:\n${part.content}\n\n`;
-        // }
-
-        // chatContent = chatContent.trim();
+        chatMessages.unshift({role: "system", content: [{type: "text", text: Environment.SYSTEM_PROMPT}]});
 
         let waitMessage: Message;
 

@@ -13,6 +13,7 @@ import sharp from "sharp";
 import {UserStore} from "../common/user-store";
 import * as orm from "drizzle-orm";
 import {sql, type SQL} from "drizzle-orm";
+import fs from "node:fs";
 
 export const ignore = () => {
 };
@@ -784,4 +785,17 @@ export async function mapPhotoSizeToMax(size: PhotoSize): Promise<PhotoMaxSize |
         url: await getFileUrl(size.file_id),
         unique_file_id: size.file_unique_id
     };
+}
+
+export async function imageToBase64(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        fs.readFile(filePath, (err, data) => {
+            if (err) {
+                return reject(err);
+            }
+            const base64Image = Buffer.from(data).toString("base64");
+            const dataUrl = `data:image/jpeg;base64,${base64Image}`;
+            resolve(dataUrl);
+        });
+    });
 }
