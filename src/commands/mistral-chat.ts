@@ -103,7 +103,7 @@ export class MistralChat extends ChatCommand {
             });
 
             const stream = await this.mistralAi.chat.stream({
-                model: "mistral-small-latest",
+                model: Environment.MISTRAL_MODEL || "mistral-small-latest",
                 messages: chatMessages as any
             });
 

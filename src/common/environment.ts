@@ -19,15 +19,19 @@ export class Environment {
 
     static USE_NAMES_IN_PROMPT: boolean;
 
-    static OLLAMA_MODEL?: string;
-    static OLLAMA_ADDRESS?: string;
-    static OLLAMA_API_KEY?: string;
-    static SYSTEM_PROMPT?: string;
-
     static MAX_PHOTO_SIZE: number;
 
+    static SYSTEM_PROMPT?: string;
+
+    static OLLAMA_ADDRESS?: string;
+    static OLLAMA_MODEL?: string;
+    static OLLAMA_API_KEY?: string;
+
     static GEMINI_API_KEY?: string;
+    static GEMINI_MODEL?: string;
+
     static MISTRAL_API_KEY?: string;
+    static MISTRAL_MODEL?: string;
 
     static waitText = "⏳ Дайте-ка подумать...";
 
@@ -47,15 +51,19 @@ export class Environment {
 
         Environment.USE_NAMES_IN_PROMPT = process.env.USE_NAMES_IN_PROMPT == "true";
 
-        Environment.OLLAMA_MODEL = process.env.OLLAMA_MODEL;
-        Environment.OLLAMA_ADDRESS = process.env.OLLAMA_ADDRESS;
-        Environment.OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
-        Environment.SYSTEM_PROMPT = process.env.SYSTEM_PROMPT?.trim();
-
         Environment.MAX_PHOTO_SIZE = Number(process.env.MAX_PHOTO_SIZE || "1280");
 
+        Environment.SYSTEM_PROMPT = process.env.SYSTEM_PROMPT?.trim();
+
+        Environment.OLLAMA_ADDRESS = process.env.OLLAMA_ADDRESS;
+        Environment.OLLAMA_MODEL = process.env.OLLAMA_MODEL;
+        Environment.OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
+
         Environment.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+        Environment.GEMINI_MODEL = process.env.GEMINI_MODEL;
+
         Environment.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
+        Environment.MISTRAL_MODEL = process.env.MISTRAL_MODEL;
     }
 
     static setAdmins(admins: Set<number>) {

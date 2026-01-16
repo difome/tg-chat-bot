@@ -68,7 +68,7 @@ export class GeminiChat extends ChatCommand {
             });
 
             const stream = await this.googleAi.models.generateContentStream({
-                model: "gemini-2.5-flash",
+                model: Environment.GEMINI_MODEL || "gemini-2.5-flash",
                 contents: chatContent,
             });
 
