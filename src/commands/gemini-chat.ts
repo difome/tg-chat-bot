@@ -40,7 +40,7 @@ export class GeminiChat extends ChatCommand {
         const chatMessages = messageParts.map(part => {
             return {
                 role: part.bot ? "assistant" : "user",
-                content: `MESSAGE FROM USER "${part.name}":\n` + extractText(part.content, "/gemini")
+                content: (Environment.USE_NAMES_IN_PROMPT ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, "/gemini")
             };
         });
         chatMessages.reverse();

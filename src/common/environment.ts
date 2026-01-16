@@ -17,6 +17,8 @@ export class Environment {
     static USE_DAD: boolean;
     static USE_FU: boolean;
 
+    static USE_NAMES_IN_PROMPT: boolean;
+
     static OLLAMA_MODEL?: string;
     static OLLAMA_ADDRESS?: string;
     static OLLAMA_API_KEY?: string;
@@ -42,6 +44,8 @@ export class Environment {
         Environment.USE_MOM = process.env.USE_MOM == "true";
         Environment.USE_DAD = process.env.USE_DAD == "true";
         Environment.USE_FU = process.env.USE_FU == "true";
+
+        Environment.USE_NAMES_IN_PROMPT = process.env.USE_NAMES_IN_PROMPT == "true";
 
         Environment.OLLAMA_MODEL = process.env.OLLAMA_MODEL;
         Environment.OLLAMA_ADDRESS = process.env.OLLAMA_ADDRESS;
