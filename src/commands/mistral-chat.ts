@@ -69,7 +69,7 @@ export class MistralChat extends ChatCommand {
             const content = [];
             content.push({
                 type: "text",
-                text: (Environment.USE_NAMES_IN_PROMPT ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, Environment.BOT_PREFIX),
+                text: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, Environment.BOT_PREFIX),
             });
 
             if (imageFilePath && i === 0) {
