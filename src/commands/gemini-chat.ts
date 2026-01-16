@@ -3,7 +3,7 @@ import {Message} from "typescript-telegram-bot-api";
 import {
     collectReplyChainText,
     editMessageText,
-    escapeMarkdownV2Text,
+    escapeMarkdownV2Text, extractText,
     logError,
     replyToMessage,
     startIntervalEditor
@@ -39,12 +39,12 @@ export class GeminiChat extends ChatCommand {
 
         const chatMessages = messageParts.map(part => {
             return {
-                role: part.bot ? "ASSISTANT" : "USER",
-                content: part.content
+                role: part.bot ? "assistant" : "user",
+                content: `MESSAGE FROM USER "${part.name}":\n` + extractText(part.content, "/gemini")
             };
         });
         chatMessages.reverse();
-        chatMessages.unshift({role: "SYSTEM", content: Environment.SYSTEM_PROMPT});
+        chatMessages.unshift({role: "system", content: Environment.SYSTEM_PROMPT});
 
         let chatContent = "";
         for (const part of chatMessages) {

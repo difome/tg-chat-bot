@@ -62,13 +62,13 @@ export class OllamaChat extends ChatCommand {
 
         const chatMessages = messageParts.map((part, i) => {
             return {
-                role: part.bot ? "ASSISTANT" : "USER",
-                content: extractText(part.content, Environment.BOT_PREFIX),
+                role: part.bot ? "assistant" : "user",
+                content: `MESSAGE FROM USER "${part.name}":\n` + extractText(part.content, Environment.BOT_PREFIX),
                 images: imageFilePath && i === 0 ? [imageFilePath] : null
             };
         });
         chatMessages.reverse();
-        chatMessages.unshift({role: "SYSTEM", content: Environment.SYSTEM_PROMPT, images: null});
+        chatMessages.unshift({role: "system", content: Environment.SYSTEM_PROMPT, images: null});
 
         let waitMessage: Message;
 

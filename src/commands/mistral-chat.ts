@@ -6,6 +6,7 @@ import {
     collectReplyChainText,
     editMessageText,
     escapeMarkdownV2Text,
+    extractText,
     getPhotoMaxSize,
     logError,
     replyToMessage,
@@ -68,7 +69,7 @@ export class MistralChat extends ChatCommand {
             const content = [];
             content.push({
                 type: "text",
-                text: part.content
+                text: `MESSAGE FROM USER "${part.name}":\n` + extractText(part.content, Environment.BOT_PREFIX),
             });
 
             if (imageFilePath && i === 0) {
