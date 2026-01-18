@@ -98,10 +98,20 @@ export function fixLayoutAuto(
 }
 
 export class Transliteration extends ChatCommand {
-    regexp = /^\/tr\s([^]+)/i;
+    regexp = /^\/tr/i;
 
-    async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
-        const text = (match ? match[1] : "").trim();
+    async execute(msg: Message): Promise<void> {
+        let text: string = "";
+
+        if (msg.reply_to_message) {
+            text = (msg.reply_to_message.text || msg.reply_to_message.caption || "");
+        } else {
+            const split = (msg.text || msg.caption).split("/tr ");
+            if (split.length > 1) {
+                text = split[1].trim();
+            }
+        }
+
         if (text.length === 0) {
             return;
         }
