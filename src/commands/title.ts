@@ -2,12 +2,14 @@ import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
-import {logError, replyToMessage} from "../util/utils";
+import {logError, oldReplyToMessage} from "../util/utils";
 import {bot} from "../index";
 
 export class Title extends ChatCommand {
-    regexp = /^\/title\s([^]+)/;
-    title = "/title [title]";
+    command = "title";
+    argsMode = "required" as const;
+
+    title = "/title";
     description = "Change group title";
 
     requirements = Requirements.Build(
@@ -19,7 +21,7 @@ export class Title extends ChatCommand {
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         const title = (match?.[1] ?? "").trim();
         if (title.length === 0) {
-            await replyToMessage(msg, "Не нашёл название...").catch(logError);
+            await oldReplyToMessage(msg, "Не нашёл название...").catch(logError);
             return;
         }
 

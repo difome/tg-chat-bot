@@ -3,8 +3,7 @@ import {logError, oldSendMessage} from "../util/utils";
 import {Message} from "typescript-telegram-bot-api";
 import {systemInfoText} from "../index";
 
-export class SystemSpecs implements ChatCommand {
-    regexp = /^\/systeminfo/i;
+export class SystemSpecs extends ChatCommand {
     title = "/systemInfo";
     description = "System information";
 

@@ -14,6 +14,7 @@ import {UserStore} from "../common/user-store";
 import * as orm from "drizzle-orm";
 import {sql, type SQL} from "drizzle-orm";
 import fs from "node:fs";
+import path from "node:path";
 
 export const ignore = () => {
 };
@@ -38,12 +39,21 @@ export const errorPlaceholder = async (msg: Message) => {
     await sendErrorPlaceholder(msg).catch(logError);
 };
 
-export function searchChatCommand(commands: ChatCommand[], text: string): ChatCommand | null {
-    for (let i = 0; i < commands.length; i++) {
-        const command = commands[i];
-        if (command?.regexp.test(text)) {
-            return command;
+export function searchChatCommand(
+    commands: ChatCommand[],
+    text: string,
+    botUsername: string = botUser.username
+): ChatCommand | null {
+    for (const command of commands) {
+        const match = command.finalRegexp.exec(text);
+        if (!match) continue;
+
+        const mentioned = match[2]?.toLowerCase();
+        if (botUsername && mentioned && mentioned !== botUsername.toLowerCase()) {
+            continue;
         }
+
+        return command;
     }
 
     return null;
@@ -81,13 +91,13 @@ export async function checkRequirements(cmd: ChatCommand | null, msg: Message): 
 
     if (reqs.isRequiresBotCreator() && fromId !== Environment.CREATOR_ID) {
         console.log(`${cmd.title}: creatorId is bad`);
-        await replyToMessage(msg, "Вы не являетесь создателем бота.");
+        await oldReplyToMessage(msg, "Вы не являетесь создателем бота.");
         return false;
     }
 
     if (reqs.isRequiresBotAdmin() && !Environment.ADMIN_IDS.has(fromId)) {
         console.log(`${cmd.title}: adminId is bad`);
-        await replyToMessage(msg, "Вы не являетесь администратором бота.");
+        await oldReplyToMessage(msg, "Вы не являетесь администратором бота.");
         return false;
     }
 
@@ -97,20 +107,20 @@ export async function checkRequirements(cmd: ChatCommand | null, msg: Message): 
 
         if (!isAdmin) {
             console.log(`${cmd.title}: chatAdminId is bad`);
-            await replyToMessage(msg, "Бот не является администратором чата.");
+            await oldReplyToMessage(msg, "Бот не является администратором чата.");
             return false;
         }
     }
 
     if (reqs.isRequiresChat() && msg.chat.type === "private") {
         console.log(`${cmd.title}: chatId is bad`);
-        await replyToMessage(msg, "Тут Вам не чат.");
+        await oldReplyToMessage(msg, "Тут Вам не чат.");
         return false;
     }
 
     if (reqs.isRequiresReply() && !msg.reply_to_message) {
         console.log(`${cmd.title}: replyMessage is bad`);
-        await replyToMessage(msg, "Отсутствует ответ на сообщение.");
+        await oldReplyToMessage(msg, "Отсутствует ответ на сообщение.");
         return false;
     }
 
@@ -179,10 +189,11 @@ export async function editMessageText(chatId: number, messageId: number, message
 }
 
 export type SendOptions = {
-    chatId?: number;
+    chat_id?: number;
     message?: Message,
+    message_id?: number;
     text: string,
-    parseMode?: ParseMode,
+    parse_mode?: ParseMode,
 };
 
 export async function oldSendMessage(message: Message, text: string, parseMode?: ParseMode): Promise<Message> {
@@ -197,15 +208,28 @@ export async function oldSendMessage(message: Message, text: string, parseMode?:
 
 export async function sendMessage(options: SendOptions): Promise<Message> {
     const response = await bot.sendMessage({
-        chat_id: options.chatId ?? options.message?.chat?.id,
+        chat_id: options.chat_id ?? options.message?.chat?.id,
         text: options.text,
-        parse_mode: options.parseMode
+        parse_mode: options.parse_mode
     });
 
     return Promise.resolve(response);
 }
 
-export async function replyToMessage(message: Message, text: string, parseMode?: ParseMode): Promise<Message> {
+export async function replyToMessage(options: SendOptions): Promise<Message> {
+    const response = await bot.sendMessage({
+        chat_id: options.chat_id ?? options.message?.chat?.id,
+        text: options.text,
+        parse_mode: options.parse_mode,
+        reply_parameters: {
+            message_id: options.message_id || options.message?.message_id
+        }
+    });
+
+    return Promise.resolve(response);
+}
+
+export async function oldReplyToMessage(message: Message, text: string, parseMode?: ParseMode): Promise<Message> {
     const response = await bot.sendMessage({
         chat_id: message.chat.id,
         text: text,
@@ -382,11 +406,47 @@ export function extractTextStored(msg: StoredMessage, prefix: string): string {
 }
 
 export function extractText(text: string, prefix: string): string {
+    if (!text) return "";
     if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
         text = text.substring(prefix.length).trim();
     }
 
     return text;
+}
+
+export function isStoredMessage(msg: Message | StoredMessage): msg is StoredMessage {
+    return "id" in msg;
+}
+
+export async function loadImageIfExists(msg: Message | StoredMessage): Promise<string | null> {
+    if (isStoredMessage(msg)) {
+        return msg.photoMaxSizeFilePath;
+    }
+
+    let imageFilePath: string | null = null;
+
+    const maxSize = await getPhotoMaxSize(msg.photo);
+    if (maxSize) {
+        const imagePath = path.join(Environment.DATA_PATH, "temp");
+        if (!fs.existsSync(imagePath)) {
+            fs.mkdirSync(imagePath);
+        }
+
+        imageFilePath = path.join(imagePath, maxSize.unique_file_id + ".jpg");
+        if (!fs.existsSync(imageFilePath)) {
+            const res = await axios.get<ArrayBuffer>(maxSize.url, {responseType: "arraybuffer"});
+            const src = Buffer.from(res.data);
+
+            try {
+                fs.writeFileSync(imageFilePath, src);
+            } catch (e) {
+                console.error(e);
+                imageFilePath = null;
+            }
+        }
+    }
+
+    return imageFilePath;
 }
 
 export async function collectReplyChainText(triggerMsg: Message, prefix: string = Environment.BOT_PREFIX, limit: number = 40, includeTrigger = true): Promise<MessagePart[]> {
@@ -395,11 +455,16 @@ export async function collectReplyChainText(triggerMsg: Message, prefix: string 
     const parts: MessagePart[] = [];
     if (includeTrigger) {
         const t = extractTextMessage(triggerMsg, prefix);
-        if (t) parts.push({
-            bot: triggerMsg.from.id === botUser.id,
-            content: t,
-            name: triggerMsg.from.first_name
-        });
+        const img = (await loadImageIfExists(triggerMsg)) /*|| triggerMsg.reply_to_message ?
+            (await loadImageIfExists(triggerMsg.reply_to_message)) : null*/;
+        if (t) {
+            parts.push({
+                bot: triggerMsg.from.id === botUser.id,
+                content: t,
+                name: triggerMsg.from.first_name,
+                images: img ? [img] : []
+            });
+        }
     }
 
     const first = triggerMsg.reply_to_message;
@@ -408,7 +473,15 @@ export async function collectReplyChainText(triggerMsg: Message, prefix: string 
     }
 
     const firstText = extractTextMessage(first, prefix);
-    if (firstText) parts.push({bot: first.from.id === botUser.id, content: firstText, name: first.from.first_name});
+    if (firstText || first.photo) {
+        const img = await loadImageIfExists(first);
+        parts.push({
+            bot: first.from.id === botUser.id,
+            content: firstText,
+            name: first.from.first_name,
+            images: img ? [img] : []
+        });
+    }
 
     let curId = first.message_id;
 
@@ -418,14 +491,16 @@ export async function collectReplyChainText(triggerMsg: Message, prefix: string 
         if (!parentId) break;
 
         const parent = await messageDao.getById({chatId: chatId, id: parentId});
-        if (!parent?.text) break;
+        if (!parent?.text && !parent?.photoMaxSizeFilePath) break;
 
         const user = await UserStore.get(parent.fromId);
+        const img = await loadImageIfExists(parent);
 
         parts.push({
             bot: parent.fromId === botUser.id,
             content: extractTextStored(parent, prefix),
-            name: user?.firstName
+            name: user?.firstName,
+            images: img ? [img] : []
         });
         curId = parentId;
     }
@@ -806,4 +881,8 @@ export function ifTrue(exp?: never): boolean {
     if (!exp) return false;
 
     return ["true", "t", "y", 1, "1"].includes(exp);
+}
+
+export function boolToEmoji(bool: boolean): string {
+    return bool ? "✅" : "❌";
 }

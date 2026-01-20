@@ -1,8 +1,9 @@
 export type StoredMessage = {
     chatId: number;
-    messageId: number;
+    id: number;
     replyToMessageId?: number | null;
     fromId: number;
     text?: string;
     date: number;
+    photoMaxSizeFilePath?: string | null;
 };

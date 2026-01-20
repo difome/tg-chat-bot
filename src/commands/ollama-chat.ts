@@ -6,27 +6,25 @@ import {
     editMessageText,
     escapeMarkdownV2Text,
     extractText,
-    getPhotoMaxSize,
     logError,
-    replyToMessage,
+    oldReplyToMessage,
     startIntervalEditor
 } from "../util/utils";
 import {Environment} from "../common/environment";
 import {MessageStore} from "../common/message-store";
-import axios from "axios";
-import * as fs from "node:fs";
-import path from "node:path";
 import {Cancel} from "../callback_commands/cancel";
 import {OllamaCancel} from "../callback_commands/ollama-cancel";
 
 export class OllamaChat extends ChatCommand {
-    regexp = /^\/ollama\s([^]+)/;
+    command = "ollama";
+    argsMode = "required" as const;
+
     title = "/ollama";
-    description = "talk to AI (Ollama)";
+    description = "Chat with AI (Ollama)";
 
     async execute(msg: Message, match?: RegExpExecArray | null): Promise<void> {
         console.log("match", match);
-        return this.executeOllama(msg, match?.[1]);
+        return this.executeOllama(msg, match?.[3]);
     }
 
     async executeOllama(msg: Message, text: string): Promise<void> {
@@ -34,41 +32,18 @@ export class OllamaChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        let imageFilePath: string | null = null;
-
-        const maxSize = await getPhotoMaxSize(msg.photo);
-        if (maxSize) {
-            const imagePath = path.join(Environment.DATA_PATH, "temp");
-            if (!fs.existsSync(imagePath)) {
-                fs.mkdirSync(imagePath);
-            }
-
-            imageFilePath = path.join(imagePath, maxSize.unique_file_id + ".jpg");
-            if (!fs.existsSync(imageFilePath)) {
-                const res = await axios.get<ArrayBuffer>(maxSize.url, {responseType: "arraybuffer"});
-                const src = Buffer.from(res.data);
-
-                try {
-                    fs.writeFileSync(imageFilePath, src);
-                } catch (e) {
-                    console.error(e);
-                    imageFilePath = null;
-                }
-            }
-        }
-
         const messageParts = await collectReplyChainText(msg);
         console.log("MESSAGE PARTS", messageParts);
 
-        const chatMessages = messageParts.map((part, i) => {
+        const chatMessages = messageParts.map(part => {
             return {
                 role: part.bot ? "assistant" : "user",
                 content: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, Environment.BOT_PREFIX),
-                images: imageFilePath && i === 0 ? [imageFilePath] : null
+                images: part.images
             };
         });
         chatMessages.reverse();
-        chatMessages.unshift({role: "system", content: Environment.SYSTEM_PROMPT, images: null});
+        chatMessages.unshift({role: "system", content: Environment.SYSTEM_PROMPT, images: []});
 
         let waitMessage: Message;
 
@@ -81,7 +56,8 @@ export class OllamaChat extends ChatCommand {
 
             waitMessage = await bot.sendMessage({
                 chat_id: chatId,
-                text: maxSize !== null ? `🔍 Внимательно изучаю изображение...\n🤓 ${maxSize.width}x${maxSize.height}px` : Environment.waitText,
+                text: Environment.waitText,
+                // text: maxSize !== null ? `🔍 Внимательно изучаю изображение...\n🤓 ${maxSize.width}x${maxSize.height}px` : Environment.waitText,
                 reply_parameters: {
                     chat_id: chatId,
                     message_id: msg.message_id
@@ -117,17 +93,18 @@ export class OllamaChat extends ChatCommand {
                 onStop: async () => {
                 }
             });
+            await editor.tick();
 
             try {
                 for await (const chunk of stream) {
-                    if (!getOllamaRequest(uuid).done) {
-                        currentText += chunk.message.content;
+                    currentText += chunk.message.content;
 
-                        if (currentText.length > 4096) {
-                            currentText = currentText.slice(0, 4093) + "...";
-                            shouldBreak = true;
-                        }
-                    } else {
+                    if (currentText.length > 4096) {
+                        currentText = currentText.slice(0, 4093) + "...";
+                        shouldBreak = true;
+                    }
+
+                    if (getOllamaRequest(uuid).done) {
                         shouldBreak = true;
                     }
 
@@ -154,7 +131,7 @@ export class OllamaChat extends ChatCommand {
                         waitMessage.text = currentText;
                         await MessageStore.put(waitMessage);
 
-                        await replyToMessage(waitMessage, `⏱️ ${diff}s` + (maxSize !== null ? `\n🤓 ${maxSize.width}x${maxSize.height}px` : ""));
+                        await oldReplyToMessage(waitMessage, `⏱️ ${diff}s` /*+ (maxSize !== null ? `\n🤓 ${maxSize.width}x${maxSize.height}px` : "")*/);
                         break;
                     }
                 }
@@ -173,7 +150,7 @@ export class OllamaChat extends ChatCommand {
             }).catch(logError);
 
             console.error(error);
-            await replyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
+            await oldReplyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
     }
 }

@@ -3,11 +3,10 @@ import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 import {Message} from "typescript-telegram-bot-api";
 import {bot, botUser} from "../index";
-import {fullName, logError, oldSendMessage, replyToMessage} from "../util/utils";
+import {fullName, logError, oldSendMessage, oldReplyToMessage} from "../util/utils";
 import {Environment} from "../common/environment";
 
 export class Unban extends ChatCommand {
-    regexp = /^\/unban/i;
     title = "/unban [reply]";
     description = "unban user from chat";
 
@@ -25,17 +24,17 @@ export class Unban extends ChatCommand {
         const userId = user.id;
 
         if (userId === botUser.id) {
-            await replyToMessage(msg, "Бот и так не в бане сам у себя.").catch(logError);
+            await oldReplyToMessage(msg, "Бот и так не в бане сам у себя.").catch(logError);
             return;
         }
 
         if (userId === Environment.CREATOR_ID) {
-            await replyToMessage(msg, "Создатель бота и так не в бане и никогда не будет.").catch(logError);
+            await oldReplyToMessage(msg, "Создатель бота и так не в бане и никогда не будет.").catch(logError);
             return;
         }
 
         if (msg.from.id !== Environment.CREATOR_ID && Environment.ADMIN_IDS.has(userId)) {
-            await replyToMessage(msg, "Админимтраторы бота и так не в бане.").catch(logError);
+            await oldReplyToMessage(msg, "Админимтраторы бота и так не в бане.").catch(logError);
             return;
         }
 

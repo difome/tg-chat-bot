@@ -16,7 +16,6 @@ const timings = [1500, 2500];
 const timer = [3, 2, 1];
 
 export class Shutdown extends ChatCommand {
-    regexp = /^\/shutdown/i;
     title = "/shutdown";
     description = "Self-destruction sequence for bot (shutdown)";
 

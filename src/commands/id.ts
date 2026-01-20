@@ -1,9 +1,8 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {logError, replyToMessage} from "../util/utils";
+import {logError, oldReplyToMessage} from "../util/utils";
 
 export class Id extends ChatCommand {
-    regexp = /^\/id/i;
     title = "/id";
     description = "ID of chat, user and reply (if replied to any message)";
 
@@ -13,6 +12,6 @@ export class Id extends ChatCommand {
             text += ` \nreply id: \n\`\`\`${msg.reply_to_message.from.id}\`\`\``;
         }
 
-        await replyToMessage(msg, text, "MarkdownV2").catch(logError);
+        await oldReplyToMessage(msg, text, "MarkdownV2").catch(logError);
     }
 }

@@ -18,7 +18,7 @@ export class MessageStore {
     static async put(m: Message, prefix: string = Environment.BOT_PREFIX) {
         const msg: StoredMessage = {
             chatId: m.chat.id,
-            messageId: m.message_id,
+            id: m.message_id,
             replyToMessageId: m.reply_to_message?.message_id ?? null,
             fromId: m.from.id,
             text: extractTextMessage(m, prefix),

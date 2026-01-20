@@ -7,7 +7,7 @@ import {Environment} from "../common/environment";
 import {botUser} from "../index";
 
 export class AdminsRemove extends ChatCommand {
-    regexp = /^\/removeadmin/i;
+    command = "removeAdmin";
     title = "/removeAdmin";
     description = "Remove user from admins";
 

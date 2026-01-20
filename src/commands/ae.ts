@@ -4,15 +4,16 @@ import {errorPlaceholder, logError, oldSendMessage} from "../util/utils";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 
-export class Ae implements ChatCommand {
-    regexp = /^\/ae\s([^]+)/i;
+export class Ae extends ChatCommand {
+    argsMode = "required" as const;
+
     title = "/ae";
     description = "evaluation";
 
     requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
-    async execute(msg: Message, params: string[]) {
-        const match = params[1];
+    async execute(msg: Message, params?: RegExpExecArray) {
+        const match = params?.[3];
 
         try {
             let e = eval(match);

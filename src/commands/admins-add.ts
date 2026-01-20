@@ -7,7 +7,7 @@ import {Environment} from "../common/environment";
 import {botUser} from "../index";
 
 export class AdminsAdd extends ChatCommand {
-    regexp = /^\/addadmin/i;
+    command = "addAdmin";
     title = "/addAdmin";
     description = "Add user to admins";
 

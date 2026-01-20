@@ -1,4 +1,4 @@
-import {messagesTable} from "./schema";
+import {MessageInsert, messagesTable} from "./schema";
 import {DatabaseManager} from "./database-manager";
 import {StoredMessage} from "../model/stored-message";
 import {and, eq} from "drizzle-orm";
@@ -66,7 +66,7 @@ export class MessageDao extends Dao<StoredMessage> {
         return this.mapFrom(messages);
     }
 
-    async insert(values: typeof messagesTable.$inferInsert[]): Promise<true> {
+    async insert(values: MessageInsert[]): Promise<true> {
         const then = Date.now();
         const r = await DatabaseManager.db
             .insert(messagesTable)
@@ -82,7 +82,7 @@ export class MessageDao extends Dao<StoredMessage> {
         return true;
     }
 
-    mapTo(messages: Message[]): typeof messagesTable.$inferInsert[] {
+    mapTo(messages: Message[]): MessageInsert[] {
         return messages.map(msg => {
             return {
                 chatId: msg.chat.id,
@@ -95,15 +95,16 @@ export class MessageDao extends Dao<StoredMessage> {
         });
     }
 
-    mapFrom(messages: typeof messagesTable.$inferInsert[]): StoredMessage[] {
+    mapFrom(messages: MessageInsert[]): StoredMessage[] {
         return messages.map(m => {
             return {
                 chatId: m.chatId,
-                messageId: m.id,
+                id: m.id,
                 replyToMessageId: m.replyToMessageId,
                 fromId: m.fromId,
                 text: m.text,
-                date: m.date
+                date: m.date,
+                photoMaxSizeFilePath: m.photoMaxSizeFilePath
             };
         });
     }

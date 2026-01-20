@@ -8,7 +8,9 @@ import {editMessageText} from "../util/utils";
 import {Environment} from "../common/environment";
 
 export class OllamaSearch extends ChatCommand {
-    regexp = /^\/(s|search)\s([^]+)/;
+    command = ["s", "search"];
+    argsMode = "required" as const;
+
     title = "/search";
     description = "Web search via Ollama";
 
@@ -29,7 +31,7 @@ export class OllamaSearch extends ChatCommand {
                 parse_mode: "Markdown"
             });
 
-            const results = await ollama.webSearch({query: match?.[2]});
+            const results = await ollama.webSearch({query: match?.[3]});
             console.log("results", results);
 
             let message = "Результаты:\n\n";

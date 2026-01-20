@@ -30,10 +30,10 @@ export class Environment {
     static OLLAMA_API_KEY?: string;
 
     static GEMINI_API_KEY?: string;
-    static GEMINI_MODEL?: string;
+    static GEMINI_MODEL: string;
 
     static MISTRAL_API_KEY?: string;
-    static MISTRAL_MODEL?: string;
+    static MISTRAL_MODEL: string;
 
     static waitText = "⏳ Дайте-ка подумать...";
 
@@ -64,10 +64,10 @@ export class Environment {
         Environment.OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
 
         Environment.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        Environment.GEMINI_MODEL = process.env.GEMINI_MODEL;
+        Environment.GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
         Environment.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
-        Environment.MISTRAL_MODEL = process.env.MISTRAL_MODEL;
+        Environment.MISTRAL_MODEL = process.env.MISTRAL_MODEL || "mistral-small-latest";
     }
 
     static setAdmins(admins: Set<number>) {
@@ -92,5 +92,17 @@ export class Environment {
         }
 
         return has;
+    }
+
+    static setOllamaModel(newModel: string) {
+        Environment.OLLAMA_MODEL = newModel;
+    }
+
+    static setGeminiModel(newModel: string) {
+        Environment.GEMINI_MODEL = newModel;
+    }
+
+    static setMistralModel(newModel: string) {
+        Environment.MISTRAL_MODEL = newModel;
     }
 }

@@ -3,30 +3,31 @@ import {Message} from "typescript-telegram-bot-api";
 import {
     collectReplyChainText,
     editMessageText,
-    escapeMarkdownV2Text, extractText,
+    escapeMarkdownV2Text,
+    extractText,
     logError,
-    replyToMessage,
+    oldReplyToMessage,
     startIntervalEditor
 } from "../util/utils";
 import {Environment} from "../common/environment";
-import {bot} from "../index";
+import {bot, googleAi} from "../index";
 import {MessageStore} from "../common/message-store";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
-import {ApiError, GoogleGenAI} from "@google/genai";
+import {ApiError} from "@google/genai";
 
 export class GeminiChat extends ChatCommand {
-    regexp = /^\/gemini\s([^]+)/i;
+    command = "gemini";
+    argsMode = "required" as const;
+
     title = "/gemini";
     description = "Chat with AI (Gemini)";
 
     requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
-    private googleAi = new GoogleGenAI({apiKey: Environment.GEMINI_API_KEY});
-
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         console.log("match", match);
-        return this.executeGemini(msg, match?.[1]);
+        return this.executeGemini(msg, match?.[3]);
     }
 
     async executeGemini(msg: Message, text: string): Promise<void> {
@@ -67,8 +68,8 @@ export class GeminiChat extends ChatCommand {
                 }
             });
 
-            const stream = await this.googleAi.models.generateContentStream({
-                model: Environment.GEMINI_MODEL || "gemini-2.5-flash",
+            const stream = await googleAi.models.generateContentStream({
+                model: Environment.GEMINI_MODEL,
                 contents: chatContent,
             });
 
@@ -85,6 +86,7 @@ export class GeminiChat extends ChatCommand {
                 onStop: async () => {
                 }
             });
+            await editor.tick();
 
             try {
                 for await (const chunk of stream) {
@@ -123,21 +125,21 @@ export class GeminiChat extends ChatCommand {
 
                 waitMessage.reply_to_message = msg;
                 waitMessage.text = messageText;
-                MessageStore.put(waitMessage);
+                await MessageStore.put(waitMessage);
 
-                await replyToMessage(waitMessage, `⏱️ ${diff}s`);
+                await oldReplyToMessage(waitMessage, `⏱️ ${diff}s`);
             }
         } catch (error) {
             console.error(error);
 
             if (error instanceof ApiError) {
                 if (error.status === 429) {
-                    await replyToMessage(waitMessage, "На сегодня всё, лимиты закончились.").catch(logError);
+                    await oldReplyToMessage(waitMessage, "На сегодня всё, лимиты закончились.").catch(logError);
                     return;
                 }
             }
 
-            await replyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
+            await oldReplyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
     }
 }

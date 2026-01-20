@@ -4,7 +4,6 @@ import {chatCommands} from "../index";
 import {Help} from "./help";
 
 export class Start extends ChatCommand {
-    regexp = /^\/start/i;
     title = "/start";
     description = "Start the bot";
 

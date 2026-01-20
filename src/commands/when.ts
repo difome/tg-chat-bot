@@ -1,9 +1,11 @@
 import {ChatCommand} from "../base/chat-command";
-import {getRandomInt, getRangedRandomInt, logError, replyToMessage} from "../util/utils";
+import {getRandomInt, getRangedRandomInt, logError, oldReplyToMessage} from "../util/utils";
 import {Message} from "typescript-telegram-bot-api";
 
 export class When extends ChatCommand {
-    regexp = /^\/(when|когда)\s([^]+)/i;
+    command = ["when", "когда"];
+    argsMode = "required" as const;
+
     title = "/when [value]";
     description = "random date";
 
@@ -85,6 +87,6 @@ export class When extends ChatCommand {
             }
         }
 
-        await replyToMessage(msg, text).catch(logError);
+        await oldReplyToMessage(msg, text).catch(logError);
     }
 }

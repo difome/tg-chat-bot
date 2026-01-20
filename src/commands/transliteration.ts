@@ -1,6 +1,6 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {logError, replyToMessage} from "../util/utils";
+import {logError, oldReplyToMessage} from "../util/utils";
 
 const EN =
     "`qwertyuiop[]asdfghjkl;'zxcvbnm,./" +
@@ -98,7 +98,6 @@ export function fixLayoutAuto(
 }
 
 export class Transliteration extends ChatCommand {
-    regexp = /^\/tr/i;
     title = "/tr [text or reply]";
     description = "Transliteration EN <--> RU";
 
@@ -120,6 +119,6 @@ export class Transliteration extends ChatCommand {
 
         const newText = fixLayoutAuto(text, toRuLayout, toEnLayout);
 
-        await replyToMessage(msg, newText).catch(logError);
+        await oldReplyToMessage(msg, newText).catch(logError);
     }
 }

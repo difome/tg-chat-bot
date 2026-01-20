@@ -2,8 +2,7 @@ import {ChatCommand} from "../base/chat-command";
 import {getRandomInt, logError, oldSendMessage} from "../util/utils";
 import {Message} from "typescript-telegram-bot-api";
 
-export class RandomString implements ChatCommand {
-    regexp = /^\/randomString/i;
+export class RandomString extends ChatCommand {
     title = "/randomString [length]";
     description = "literally random string (up to 4096 symbols)";
 

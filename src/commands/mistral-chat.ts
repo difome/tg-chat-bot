@@ -7,31 +7,27 @@ import {
     editMessageText,
     escapeMarkdownV2Text,
     extractText,
-    getPhotoMaxSize,
     logError,
-    replyToMessage,
+    oldReplyToMessage,
     startIntervalEditor
 } from "../util/utils";
 import {Environment} from "../common/environment";
-import {bot} from "../index";
+import {bot, mistralAi} from "../index";
 import {MessageStore} from "../common/message-store";
-import {Mistral} from "@mistralai/mistralai";
-import path from "node:path";
 import fs from "node:fs";
-import axios from "axios";
 
 export class MistralChat extends ChatCommand {
-    regexp = /^\/mistral\s([^]+)/i;
+    command = "mistral";
+    argsMode = "required" as const;
+
     title = "/mistral";
     description = "Chat with AI (Mistral)";
 
     requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
-    private mistralAi = new Mistral({apiKey: Environment.MISTRAL_API_KEY});
-
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         console.log("match", match);
-        return this.executeMistral(msg, match?.[1]);
+        return this.executeMistral(msg, match?.[3]);
     }
 
     async executeMistral(msg: Message, text: string): Promise<void> {
@@ -39,41 +35,18 @@ export class MistralChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        let imageFilePath: string | null = null;
-
-        const maxSize = await getPhotoMaxSize(msg.photo);
-        if (maxSize) {
-            const imagePath = path.join(Environment.DATA_PATH, "temp");
-            if (!fs.existsSync(imagePath)) {
-                fs.mkdirSync(imagePath);
-            }
-
-            imageFilePath = path.join(imagePath, maxSize.unique_file_id + ".jpg");
-            if (!fs.existsSync(imageFilePath)) {
-                const res = await axios.get<ArrayBuffer>(maxSize.url, {responseType: "arraybuffer"});
-                const src = Buffer.from(res.data);
-
-                try {
-                    fs.writeFileSync(imageFilePath, src);
-                } catch (e) {
-                    console.error(e);
-                    imageFilePath = null;
-                }
-            }
-        }
-
         const messageParts = await collectReplyChainText(msg, "/mistral");
         console.log("MESSAGE PARTS", messageParts);
 
-        const chatMessages = messageParts.map((part, i) => {
+        const chatMessages = messageParts.map(part => {
             const content = [];
             content.push({
                 type: "text",
                 text: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, Environment.BOT_PREFIX),
             });
 
-            if (imageFilePath && i === 0) {
-                const base64Image = Buffer.from(fs.readFileSync(imageFilePath)).toString("base64");
+            if (part.images && part.images.length > 0) {
+                const base64Image = Buffer.from(fs.readFileSync(part.images[0])).toString("base64");
                 content.push({
                     type: "image_url",
                     imageUrl: "data:image/jpeg;base64," + base64Image
@@ -102,8 +75,8 @@ export class MistralChat extends ChatCommand {
                 }
             });
 
-            const stream = await this.mistralAi.chat.stream({
-                model: Environment.MISTRAL_MODEL || "mistral-small-latest",
+            const stream = await mistralAi.chat.stream({
+                model: Environment.MISTRAL_MODEL,
                 messages: chatMessages as any
             });
 
@@ -120,14 +93,13 @@ export class MistralChat extends ChatCommand {
                 onStop: async () => {
                 }
             });
+            await editor.tick();
 
             try {
                 for await (const chunk of stream) {
-                    // const text = chunk.text;
                     const text = chunk.data.choices[0].delta.content;
                     console.log("chunk", chunk);
 
-                    // const text = "";
                     const length = (messageText + text).length;
                     if (length > 4096) {
                         messageText = messageText.slice(0, 4093) + "...";
@@ -163,7 +135,7 @@ export class MistralChat extends ChatCommand {
                 waitMessage.text = messageText;
                 MessageStore.put(waitMessage);
 
-                await replyToMessage(waitMessage, `⏱️ ${diff}s`);
+                await oldReplyToMessage(waitMessage, `⏱️ ${diff}s`);
             }
         } catch (error) {
             console.error(error);
@@ -175,7 +147,7 @@ export class MistralChat extends ChatCommand {
             //     }
             // }
 
-            await replyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
+            await oldReplyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
     }
 }

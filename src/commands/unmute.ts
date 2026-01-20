@@ -7,8 +7,7 @@ import {Message} from "typescript-telegram-bot-api";
 import {botUser} from "../index";
 import {Environment} from "../common/environment";
 
-export class Unmute implements ChatCommand {
-    regexp = /^\/unmute/i;
+export class Unmute extends ChatCommand {
     title = "/unmute";
     description = "Bot will start responding to the user";
     requirements = Requirements.Build(Requirement.BOT_ADMIN, Requirement.CHAT, Requirement.REPLY);

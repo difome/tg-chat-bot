@@ -1,16 +1,18 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {logError, randomValue, replyToMessage} from "../util/utils";
+import {logError, oldReplyToMessage, randomValue} from "../util/utils";
 
 export class Choice extends ChatCommand {
-    regexp = /^\/choice\b\s*(.*)$/i;
+    command = "choice";
+    argsMode = "required" as const;
+
     title = "/choice a, b, ..., c";
     description = "Выбор случайного значения";
 
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         console.log("match", match);
 
-        const payload = match[1];
+        const payload = match[3];
 
         const re =
             /\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^,]+?))\s*(?:,|$)/g;
@@ -32,6 +34,6 @@ export class Choice extends ChatCommand {
 
         const random = randomValue(out);
 
-        await replyToMessage(msg, `Выбрал *${random}*`, "Markdown").catch(logError);
+        await oldReplyToMessage(msg, `Выбрал *${random}*`, "Markdown").catch(logError);
     }
 }

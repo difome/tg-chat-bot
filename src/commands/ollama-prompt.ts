@@ -1,13 +1,15 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
 import {bot, ollama} from "../index";
-import {editMessageText, ignore, replyToMessage} from "../util/utils";
+import {editMessageText, ignore, oldReplyToMessage} from "../util/utils";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 import {Environment} from "../common/environment";
 
 export class OllamaPrompt extends ChatCommand {
-    regexp = /^\/ollamaprompt\s([^]+)/i;
+    command = "ollamaPrompt";
+    argsMode = "required" as const;
+
     title = "/ollamaPrompt";
     description = "Custom prompt for AI (Ollama)";
 
@@ -86,7 +88,7 @@ export class OllamaPrompt extends ChatCommand {
                     messageText += `\n\nДумал ${diff}s`;
 
                     await editMessageText(chatId, waitMessage.message_id, messageText);
-                    await replyToMessage(waitMessage, "Закончил лишь часть 😉");
+                    await oldReplyToMessage(waitMessage, "Закончил лишь часть 😉");
                     break;
                 }
 
@@ -101,7 +103,7 @@ export class OllamaPrompt extends ChatCommand {
                     messageText += `\n\nДумал ${diff}s`;
 
                     await editMessageText(chatId, waitMessage.message_id, messageText);
-                    await replyToMessage(waitMessage, "Закончил 😉");
+                    await oldReplyToMessage(waitMessage, "Закончил 😉");
                 }
             }
         } catch (error) {

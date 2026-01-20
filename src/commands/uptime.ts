@@ -3,7 +3,6 @@ import {Message} from "typescript-telegram-bot-api";
 import {getUptime, logError, oldSendMessage} from "../util/utils";
 
 export class Uptime extends ChatCommand {
-    regexp = /^\/uptime/i;
     title = "/uptime";
     description = "Bot's uptime";
 

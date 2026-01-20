@@ -5,7 +5,6 @@ import {Requirement} from "../base/requirement";
 import {bot} from "../index";
 
 export class Leave extends ChatCommand {
-    regexp = /^\/leave/i;
     title = "/leave";
     description = "Bot will leave current chat";
 

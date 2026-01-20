@@ -1,10 +1,12 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {downloadTelegramFile, extractImageFileId, logError, replyToMessage, waveDistortSharp} from "../util/utils";
+import {downloadTelegramFile, extractImageFileId, logError, oldReplyToMessage, waveDistortSharp} from "../util/utils";
 import {bot} from "../index";
 
 export class Distort extends ChatCommand {
-    regexp = /^\/distort(?:@[\w_]+)?(?:\s+(\d+))?(?:\s+(\d+))?\s*$/i;
+    command = "distort";
+    argsMode = "optional" as const;
+
     title = "/distort [amp] [wavelength]";
     description = "Distortion of picture";
 
@@ -13,7 +15,7 @@ export class Distort extends ChatCommand {
 
         const reply = msg.reply_to_message;
         if (!reply) {
-            await replyToMessage(
+            await oldReplyToMessage(
                 msg,
                 "Ответь командой /distort на сообщение с картинкой (фото, документ или стикер).\n" + "Пример: /distort 16 80"
             );
@@ -22,15 +24,17 @@ export class Distort extends ChatCommand {
 
         const fileId = extractImageFileId(reply);
         if (!fileId) {
-            await replyToMessage(
+            await oldReplyToMessage(
                 msg,
                 "В реплае не вижу картинку. Пришли фото или файл-изображение."
             );
             return;
         }
 
-        const amp = match?.[1] ? parseInt(match[1], 10) : 14;
-        const wavelength = match?.[2] ? parseInt(match[2], 10) : 72;
+        const args = (match?.[3] ?? "").trim();
+        const [a, b] = args ? args.split(/\s+/) : [];
+        const amp = a ? Number(a) : 14;
+        const wavelength = b ? Number(b) : 72;
 
         try {
             await bot.sendChatAction({chat_id: chatId, action: "upload_photo"});
@@ -48,7 +52,7 @@ export class Distort extends ChatCommand {
                 caption: `Искажение готово ✅ (amp=${amp}, wavelength=${wavelength})`,
             });
         } catch (e) {
-            await replyToMessage(
+            await oldReplyToMessage(
                 msg, `Не получилось исказить изображение: ${e?.message ?? String(e)}`
             ).catch(logError);
         }

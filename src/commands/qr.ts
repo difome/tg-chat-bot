@@ -5,7 +5,6 @@ import {bot} from "../index";
 import QRCode from "qrcode";
 
 export class Qr extends ChatCommand {
-    regexp = /^\/qr/i;
     title = "/qr";
     description = "Generates QR-code from text you sent or replied to.";
 
@@ -18,7 +17,7 @@ export class Qr extends ChatCommand {
         const payload = extractMessagePayload(msg, matchText);
         if (!payload) {
             await sendMessage({
-                chatId: chatId,
+                chat_id: chatId,
                 text: "Отправь: /qr <текст или ссылка>\n" + "или ответь командой /qr на сообщение, из которого взять текст."
             });
             return;
@@ -26,7 +25,7 @@ export class Qr extends ChatCommand {
 
         if (payload.length > 1500) {
             await sendMessage({
-                chatId: chatId,
+                chat_id: chatId,
                 text: `Слишком длинный текст для QR (${payload.length} символов). Максимум 1500 символов.`
             });
             return;
@@ -51,7 +50,7 @@ export class Qr extends ChatCommand {
                 }
             });
         } catch (e) {
-            await sendMessage({chatId: chatId, text: `Не получилось сгенерировать QR: ${e?.message ?? String(e)}`}).catch(logError);
+            await sendMessage({chat_id: chatId, text: `Не получилось сгенерировать QR: ${e?.message ?? String(e)}`}).catch(logError);
         }
     }
 }

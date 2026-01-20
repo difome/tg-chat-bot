@@ -7,8 +7,7 @@ type DiceEmoji = "🎲" | "🎯" | "🏀" | "⚽" | "🎳" | "🎰";
 const emojis = ["🎲", "🎯", "🏀", "⚽", "🎳", "🎰"];
 
 export class Dice extends ChatCommand {
-    regexp = /^\/dice/i;
-    title = "/dice [emoji]";
+    title = "/dice";
     description = "Sends random or specific dice";
 
     async execute(msg: Message): Promise<void> {

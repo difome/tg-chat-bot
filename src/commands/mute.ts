@@ -7,8 +7,7 @@ import {fullName, logError, oldSendMessage} from "../util/utils";
 import {botUser} from "../index";
 import {Environment} from "../common/environment";
 
-export class Mute implements ChatCommand {
-    regexp = /^\/mute/i;
+export class Mute extends ChatCommand {
     title = "/mute";
     description = "Bot will ignore user";
 

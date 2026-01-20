@@ -13,8 +13,8 @@ import {
     getUserAvatar,
     logError,
     makeDarkGradientBgFancy,
-    oldSendMessage,
-    replyToMessage
+    oldReplyToMessage,
+    oldSendMessage
 } from "../util/utils";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
@@ -34,7 +34,9 @@ try {
 }
 
 export class Quote extends ChatCommand {
-    regexp = /^\/(cit|q|quote)$/i;
+    command = ["cit", "citation", "q", "quote"];
+    argsMode = "none" as const;
+
     title = "/quote";
     description = "Make quote from text (or quote)";
 
@@ -45,14 +47,14 @@ export class Quote extends ChatCommand {
         const reply = msg.reply_to_message;
 
         if (!reply) {
-            await replyToMessage(msg, "Сделай /quote реплаем на сообщение 🙂").catch(logError);
+            await oldReplyToMessage(msg, "Сделай /quote реплаем на сообщение 🙂").catch(logError);
             return;
         }
 
         try {
             const quoteRaw = (msg.quote?.text ?? reply.text ?? reply.caption ?? "").trim();
             if (quoteRaw.length === 0) {
-                await replyToMessage(msg, "Не нашёл в сообщении текста 😢").catch(logError);
+                await oldReplyToMessage(msg, "Не нашёл в сообщении текста 😢").catch(logError);
                 return;
             }
 

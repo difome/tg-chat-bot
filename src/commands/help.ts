@@ -4,8 +4,9 @@ import {ChatCommand} from "../base/chat-command";
 import {chatCommands} from "../index";
 import {TelegramError} from "typescript-telegram-bot-api/dist/errors";
 
-export class Help implements ChatCommand {
-    regexp = /^\/(h|help)/i;
+export class Help extends ChatCommand {
+    command = ["h", "help"];
+
     title = "/help";
     description = "Show list of commands";
 
@@ -16,7 +17,7 @@ export class Help implements ChatCommand {
             text += `${chatCommandToString(c)}\n`;
         });
 
-        await sendMessage({chatId: msg.from.id, text: text})
+        await sendMessage({chat_id: msg.from.id, text: text})
             .then(async () => {
                 if (msg.chat.type !== "private") {
                     await sendMessage({message: msg, text: "Отправил команды в ЛС 😎"}).catch(logError);

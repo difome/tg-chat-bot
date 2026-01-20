@@ -1,0 +1,37 @@
+import {ChatCommand} from "../base/chat-command";
+import {Requirements} from "../base/requirements";
+import {Requirement} from "../base/requirement";
+import {Message} from "typescript-telegram-bot-api";
+import {mistralAi} from "../index";
+import {logError, oldReplyToMessage, replyToMessage} from "../util/utils";
+
+export class MistralListModels extends ChatCommand {
+    title = "/mistralListModels";
+    description = "List all Mistral models";
+
+    requirements = Requirements.Build(Requirement.BOT_CREATOR);
+
+    async execute(msg: Message): Promise<void> {
+        try {
+            const listResponse = await mistralAi.models.list();
+            console.log(listResponse);
+
+            const modelsString = listResponse.data
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(e => `\`${e.name}\``)
+                .join("\n");
+
+            const text = "Доступные модели:\n\n" + modelsString;
+
+            await replyToMessage({
+                chat_id: msg.chat.id,
+                text: text,
+                parse_mode: "Markdown",
+                message: msg
+            });
+        } catch (e) {
+            console.error(e);
+            await oldReplyToMessage(msg, "Не получилось загрузить список моделей").catch(logError);
+        }
+    }
+}

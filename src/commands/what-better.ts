@@ -1,16 +1,23 @@
 import {ChatCommand} from "../base/chat-command";
-import {logError, randomValue, oldSendMessage} from "../util/utils";
+import {logError, oldSendMessage, randomValue} from "../util/utils";
 import {betterAnswers} from "../db/database";
 import {Message} from "typescript-telegram-bot-api";
 
 export class WhatBetter extends ChatCommand {
-    regexp = /^\/(what|что)\s(better|лучше)\s([^]+)\s(or|или)\s([^]+)/i;
+    command = ["what", "что"];
+    argsMode = "required" as const;
+
     title = "/what better [a] or [b]";
     description = "either a or b randomly (50% chance)";
 
+    private argsRe = /^(better|лучше)\s+([\s\S]+?)\s+(or|или)\s+([\s\S]+)$/i;
+
     async execute(msg: Message, match?: RegExpExecArray) {
-        const a = match[3];
-        const b = match[5].trimStart();
+        const args = (match?.[3] ?? "").trim();
+        const m = this.argsRe.exec(args);
+        if (!m) return;
+        const a = m[2].trim();
+        const b = m[4].trim();
 
         const text = `${randomValue(betterAnswers)} ${randomValue([a, b])}`;
 

@@ -7,6 +7,7 @@ export const messagesTable = sqliteTable("messages", {
     fromId: int().notNull(),
     text: text(),
     date: int().notNull(),
+    photoMaxSizeFilePath: text(),
 });
 
 export type MessageInsert = typeof messagesTable.$inferInsert;

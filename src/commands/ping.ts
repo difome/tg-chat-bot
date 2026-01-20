@@ -2,8 +2,7 @@ import {logError, oldSendMessage} from "../util/utils";
 import {Message} from "typescript-telegram-bot-api";
 import {ChatCommand} from "../base/chat-command";
 
-export class Ping implements ChatCommand {
-    regexp = /^\/ping/i;
+export class Ping extends ChatCommand {
     title = "/ping";
     description = "Ping between received and sent message";
 

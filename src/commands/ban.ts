@@ -3,11 +3,10 @@ import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 import {Message} from "typescript-telegram-bot-api";
 import {bot, botUser} from "../index";
-import {fullName, logError, oldSendMessage, replyToMessage} from "../util/utils";
+import {fullName, logError, oldSendMessage, oldReplyToMessage} from "../util/utils";
 import {Environment} from "../common/environment";
 
 export class Ban extends ChatCommand {
-    regexp = /^\/ban/i;
     title = "/ban [reply]";
     description = "ban user from chat";
 
@@ -25,17 +24,17 @@ export class Ban extends ChatCommand {
         const userId = user.id;
 
         if (userId === botUser.id) {
-            await replyToMessage(msg, "Используй /leave").catch(logError);
+            await oldReplyToMessage(msg, "Используй /leave").catch(logError);
             return;
         }
 
         if (userId === Environment.CREATOR_ID) {
-            await replyToMessage(msg, "Бот не будет банить своего создателя.").catch(logError);
+            await oldReplyToMessage(msg, "Бот не будет банить своего создателя.").catch(logError);
             return;
         }
 
         if (msg.from.id !== Environment.CREATOR_ID && Environment.ADMIN_IDS.has(userId)) {
-            await replyToMessage(msg, "Бот не будет банить своих администраторов.").catch(logError);
+            await oldReplyToMessage(msg, "Бот не будет банить своих администраторов.").catch(logError);
             return;
         }
 

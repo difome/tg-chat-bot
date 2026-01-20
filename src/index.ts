@@ -7,6 +7,7 @@ import {
     executeChatCommand,
     extractTextMessage,
     findAndExecuteCallbackCommand,
+    ignore,
     initSystemSpecs,
     logError,
     randomValue,
@@ -57,6 +58,17 @@ import {CallbackCommand} from "./base/callback-command";
 import {OllamaCancel} from "./callback_commands/ollama-cancel";
 import {MistralChat} from "./commands/mistral-chat";
 import {Transliteration} from "./commands/transliteration";
+import {OllamaListModels} from "./commands/ollama-list-models";
+import {OllamaGetModel} from "./commands/ollama-get-model";
+import {OllamaSetModel} from "./commands/ollama-set-model";
+import {Mistral} from "@mistralai/mistralai";
+import {GoogleGenAI} from "@google/genai";
+import {MistralGetModel} from "./commands/mistral-get-model";
+import {MistralSetModel} from "./commands/mistral-set-model";
+import {MistralListModels} from "./commands/mistral-list-models";
+import {GeminiListModels} from "./commands/gemini-list-models";
+import {GeminiGetModel} from "./commands/gemini-get-model";
+import {GeminiSetModel} from "./commands/gemini-set-model";
 
 process.setUncaughtExceptionCaptureCallback(console.error);
 
@@ -68,6 +80,9 @@ export const userDao = new UserDao();
 
 export const bot = new TelegramBot({botToken: Environment.BOT_TOKEN, testEnvironment: Environment.TEST_ENVIRONMENT});
 export let botUser: User;
+
+export const googleAi = new GoogleGenAI({apiKey: Environment.GEMINI_API_KEY});
+export const mistralAi = new Mistral({apiKey: Environment.MISTRAL_API_KEY});
 
 export const ollama = new Ollama({
     host: Environment.OLLAMA_ADDRESS,
@@ -148,7 +163,13 @@ export const callbackCommands: CallbackCommand[] = [
 ];
 
 if (Environment.OLLAMA_ADDRESS && Environment.OLLAMA_MODEL && Environment.SYSTEM_PROMPT) {
-    chatCommands.push(new OllamaChat(), new OllamaPrompt());
+    chatCommands.push(
+        new OllamaChat(),
+        new OllamaPrompt(),
+        new OllamaListModels(),
+        new OllamaGetModel(),
+        new OllamaSetModel()
+    );
 }
 
 if (Environment.OLLAMA_API_KEY) {
@@ -156,18 +177,29 @@ if (Environment.OLLAMA_API_KEY) {
 }
 
 if (Environment.GEMINI_API_KEY) {
-    chatCommands.push(new GeminiChat());
+    chatCommands.push(
+        new GeminiChat(),
+        new GeminiListModels(),
+        new GeminiGetModel(),
+        new GeminiSetModel()
+    );
 }
 
 if (Environment.MISTRAL_API_KEY) {
-    chatCommands.push(new MistralChat());
+    chatCommands.push(
+        new MistralChat(),
+        new MistralListModels(),
+        new MistralGetModel(),
+        new MistralSetModel()
+    );
 }
 
 async function main() {
     console.log(
         `TEST_ENVIRONMENT: ${Environment.TEST_ENVIRONMENT}\n` +
         `DATA_PATH: ${Environment.DATA_PATH}\n` +
-        `MAX_PHOTO_SIZE: ${Environment.MAX_PHOTO_SIZE}`
+        `MAX_PHOTO_SIZE: ${Environment.MAX_PHOTO_SIZE}\n` +
+        `ONLY_FOR_CREATOR: ${Environment.ONLY_FOR_CREATOR_MODE}`
     );
 
     const commands = chatCommands.filter(cmd => {
@@ -214,7 +246,7 @@ bot.on("edited_message", async (msg) => {
 bot.on("message", async (msg) => {
     console.log("message", msg);
 
-    await Promise.all([MessageStore.put(msg), UserStore.put(msg.from)]);
+    Promise.all([MessageStore.put(msg), UserStore.put(msg.from)]).then(ignore);
 
     if ((msg.new_chat_members?.length || 0 > 0)) {
         await bot.sendMessage({chat_id: msg.chat.id, text: randomValue(inviteAnswers)}).catch(logError);
@@ -232,8 +264,15 @@ bot.on("message", async (msg) => {
 
     const cmdText = msg.text || msg.caption || "";
 
+    const then = Date.now();
+
     const cmd = searchChatCommand(chatCommands, cmdText);
     const executed = await executeChatCommand(cmd, msg, cmdText);
+
+    const now = Date.now();
+    const diff = now - then;
+    console.log("diff", diff);
+
     if (executed || !cmdText) return;
 
     const startsWithPrefix = cmdText.toLowerCase().startsWith(Environment.BOT_PREFIX.toLowerCase());
