@@ -14,7 +14,7 @@ export class OllamaSetModel extends ChatCommand {
     requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
     async execute(msg: Message, match?: RegExpExecArray | null): Promise<void> {
-        const newModel = match?.[1];
+        const newModel = match?.[3];
         Environment.setOllamaModel(newModel || Environment.OLLAMA_MODEL);
 
         const text = newModel ? `Выбрана модель "${newModel}"`

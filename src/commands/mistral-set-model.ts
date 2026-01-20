@@ -14,7 +14,7 @@ export class MistralSetModel extends ChatCommand {
     requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
     async execute(msg: Message, match?: RegExpExecArray | null): Promise<void> {
-        const newModel = match?.[1];
+        const newModel = match?.[3];
         Environment.setMistralModel(newModel || Environment.MISTRAL_MODEL);
 
         const text = newModel ? `Выбрана модель "${newModel}"`
