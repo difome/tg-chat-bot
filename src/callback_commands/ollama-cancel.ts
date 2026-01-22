@@ -48,7 +48,7 @@ export class OllamaCancel extends CallbackCommand {
         await bot.editMessageText({
             chat_id: chatId,
             message_id: messageId,
-            text: `${content}${cancelledText}`,
+            text: `${content ? content : ""}${cancelledText}`,
             parse_mode: "Markdown",
             reply_markup: {inline_keyboard: []},
         }).catch(logError);
