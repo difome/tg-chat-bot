@@ -7,10 +7,16 @@ import {Message} from "typescript-telegram-bot-api";
 import {botUser} from "../index";
 import {Environment} from "../common/environment";
 
-export class Unmute extends ChatCommand {
-    title = "/unmute";
+export class Unignore extends ChatCommand {
+    title = "/unignore";
     description = "Bot will start responding to the user";
-    requirements = Requirements.Build(Requirement.BOT_ADMIN, Requirement.CHAT, Requirement.REPLY);
+    requirements = Requirements.Build(
+        Requirement.BOT_ADMIN,
+        Requirement.CHAT,
+        Requirement.CHAT_ADMIN,
+        Requirement.BOT_CHAT_ADMIN,
+        Requirement.REPLY,
+    );
 
     async execute(msg: Message) {
         if (!msg.reply_to_message) return;

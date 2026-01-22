@@ -101,21 +101,32 @@ export async function checkRequirements(cmd: ChatCommand | null, msg: Message): 
         return false;
     }
 
+    if (reqs.isRequiresChat() && msg.chat.type === "private") {
+        console.log(`${cmd.title}: chatId is bad`);
+        await oldReplyToMessage(msg, "Тут Вам не чат.");
+        return false;
+    }
+
+    if (reqs.isRequiresChatAdmin()) {
+        const member = await bot.getChatMember({chat_id: msg.chat.id, user_id: msg.from.id});
+        const isAdmin = member.status === "administrator" || member.status === "creator";
+
+        if (!isAdmin) {
+            console.log(`${cmd.title}: chatAdminId is bad`);
+            await oldReplyToMessage(msg, "Вы не являетесь администратором чата.");
+            return false;
+        }
+    }
+
     if (reqs.isRequiresBotChatAdmin() && msg.chat.type !== "private") {
         const member = await bot.getChatMember({chat_id: msg.chat.id, user_id: botUser.id});
         const isAdmin = member.status === "administrator" || member.status === "creator";
 
         if (!isAdmin) {
-            console.log(`${cmd.title}: chatAdminId is bad`);
+            console.log(`${cmd.title}: botChatAdminId is bad`);
             await oldReplyToMessage(msg, "Бот не является администратором чата.");
             return false;
         }
-    }
-
-    if (reqs.isRequiresChat() && msg.chat.type === "private") {
-        console.log(`${cmd.title}: chatId is bad`);
-        await oldReplyToMessage(msg, "Тут Вам не чат.");
-        return false;
     }
 
     if (reqs.isRequiresReply() && !msg.reply_to_message) {

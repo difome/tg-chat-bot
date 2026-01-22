@@ -3,7 +3,7 @@ import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 import {Message} from "typescript-telegram-bot-api";
 import {bot, botUser} from "../index";
-import {fullName, logError, oldSendMessage, oldReplyToMessage} from "../util/utils";
+import {fullName, logError, oldReplyToMessage, oldSendMessage} from "../util/utils";
 import {Environment} from "../common/environment";
 
 export class Unban extends ChatCommand {
@@ -11,10 +11,11 @@ export class Unban extends ChatCommand {
     description = "unban user from chat";
 
     requirements = Requirements.Build(
+        Requirement.BOT_ADMIN,
         Requirement.CHAT,
+        Requirement.CHAT_ADMIN,
         Requirement.BOT_CHAT_ADMIN,
         Requirement.REPLY,
-        Requirement.BOT_ADMIN
     );
 
     async execute(msg: Message) {

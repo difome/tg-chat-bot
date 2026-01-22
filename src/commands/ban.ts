@@ -11,10 +11,11 @@ export class Ban extends ChatCommand {
     description = "ban user from chat";
 
     requirements = Requirements.Build(
+        Requirement.BOT_ADMIN,
         Requirement.CHAT,
+        Requirement.CHAT_ADMIN,
         Requirement.BOT_CHAT_ADMIN,
         Requirement.REPLY,
-        Requirement.BOT_ADMIN
     );
 
     async execute(msg: Message) {

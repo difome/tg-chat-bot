@@ -15,8 +15,8 @@ import {
 } from "./util/utils";
 import {Ae} from "./commands/ae";
 import {Help} from "./commands/help";
-import {Mute} from "./commands/mute";
-import {Unmute} from "./commands/unmute";
+import {Ignore} from "./commands/ignore";
+import {Unignore} from "./commands/unignore";
 import {Ping} from "./commands/ping";
 import {RandomString} from "./commands/random-string";
 import {SystemSpecs} from "./commands/system-specs";
@@ -127,8 +127,8 @@ export const chatCommands: ChatCommand[] = [
     new Help(),
     new Test(),
     new Ae(),
-    new Mute(),
-    new Unmute(),
+    new Ignore(),
+    new Unignore(),
     new Ping(),
     new RandomInt(),
     new RandomString(),

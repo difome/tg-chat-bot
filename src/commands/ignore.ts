@@ -7,11 +7,17 @@ import {fullName, logError, oldSendMessage} from "../util/utils";
 import {botUser} from "../index";
 import {Environment} from "../common/environment";
 
-export class Mute extends ChatCommand {
-    title = "/mute";
+export class Ignore extends ChatCommand {
+    title = "/ignore";
     description = "Bot will ignore user";
 
-    requirements = Requirements.Build(Requirement.BOT_ADMIN, Requirement.REPLY);
+    requirements = Requirements.Build(
+        Requirement.BOT_ADMIN,
+        Requirement.CHAT,
+        Requirement.CHAT_ADMIN,
+        Requirement.BOT_CHAT_ADMIN,
+        Requirement.REPLY,
+    );
 
     async execute(msg: Message) {
         if (!msg.reply_to_message) return;

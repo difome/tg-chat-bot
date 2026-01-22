@@ -19,12 +19,16 @@ export class Requirements {
         return this.requirements.includes(Requirement.BOT_ADMIN);
     }
 
-    isRequiresBotChatAdmin(): boolean {
-        return this.requirements.includes(Requirement.BOT_CHAT_ADMIN);
-    }
-
     isRequiresChat(): boolean {
         return this.requirements.includes(Requirement.CHAT);
+    }
+
+    isRequiresChatAdmin(): boolean {
+        return this.requirements.includes(Requirement.CHAT_ADMIN);
+    }
+
+    isRequiresBotChatAdmin(): boolean {
+        return this.requirements.includes(Requirement.BOT_CHAT_ADMIN);
     }
 
     isRequiresReply(): boolean {
