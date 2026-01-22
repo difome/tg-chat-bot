@@ -3,7 +3,9 @@ import {getRandomInt, getRangedRandomInt, logError, oldSendMessage} from "../uti
 import {Message} from "typescript-telegram-bot-api";
 
 export class RandomInt extends ChatCommand {
-    title = "/randomInt [min] [max]";
+    argsMode = "optional" as const;
+
+    title = "/randomInt";
     description = "Ranged random integer from parameters";
 
     async execute(msg: Message) {

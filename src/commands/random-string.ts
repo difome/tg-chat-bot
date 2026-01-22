@@ -3,7 +3,9 @@ import {getRandomInt, logError, oldSendMessage} from "../util/utils";
 import {Message} from "typescript-telegram-bot-api";
 
 export class RandomString extends ChatCommand {
-    title = "/randomString [length]";
+    argsMode = "optional" as const;
+
+    title = "/randomString";
     description = "literally random string (up to 4096 symbols)";
 
     async execute(msg: Message) {
