@@ -34,4 +34,8 @@ export class Requirements {
     isRequiresReply(): boolean {
         return this.requirements.includes(Requirement.REPLY);
     }
+
+    isRequiresSameUser(): boolean {
+        return this.requirements.includes(Requirement.SAME_USER);
+    }
 }

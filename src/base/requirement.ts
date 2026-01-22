@@ -4,5 +4,6 @@ export enum Requirement {
     CHAT,
     CHAT_ADMIN,
     BOT_CHAT_ADMIN,
-    REPLY
+    REPLY,
+    SAME_USER
 }

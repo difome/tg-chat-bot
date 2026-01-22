@@ -1,10 +1,12 @@
 import {CallbackCommand} from "../base/callback-command";
 import {CallbackQuery} from "typescript-telegram-bot-api";
 import {abortOllamaRequest, bot, getOllamaRequest} from "../index";
-import {Environment} from "../common/environment";
 import {logError} from "../util/utils";
 import {MessageStore} from "../common/message-store";
 import {StoredMessage} from "../model/stored-message";
+import {Requirements} from "../base/requirements";
+import {Requirement} from "../base/requirement";
+import {Environment} from "../common/environment";
 
 const cancelledText = "```Ollama\n❌ Отменено```";
 
@@ -12,6 +14,8 @@ export class OllamaCancel extends CallbackCommand {
 
     data = "/cancel_ollama";
     text = "Cancel Ollama generation";
+
+    requirements = Requirements.Build(Requirement.SAME_USER);
 
     async execute(query: CallbackQuery): Promise<void> {
         const chatId = query.message.chat.id;

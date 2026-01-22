@@ -1,7 +1,15 @@
 import * as si from "systeminformation";
 import {ChatCommand} from "../base/chat-command";
 import {CallbackCommand} from "../base/callback-command";
-import {CallbackQuery, InlineKeyboardMarkup, Message, ParseMode, PhotoSize, User} from "typescript-telegram-bot-api";
+import {
+    CallbackQuery,
+    ChatMember,
+    InlineKeyboardMarkup,
+    Message,
+    ParseMode,
+    PhotoSize,
+    User
+} from "typescript-telegram-bot-api";
 import {Environment} from "../common/environment";
 import {TelegramError} from "typescript-telegram-bot-api/dist/errors";
 import {bot, botUser, messageDao, setSystemInfo} from "../index";
@@ -15,6 +23,7 @@ import * as orm from "drizzle-orm";
 import {sql, type SQL} from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
+import {MessageStore} from "../common/message-store";
 
 export const ignore = () => {
 };
@@ -71,68 +80,114 @@ export function searchCallbackCommand(commands: CallbackCommand[], data: string)
     return null;
 }
 
-export async function checkRequirements(cmd: ChatCommand | null, msg: Message): Promise<boolean> {
+export async function checkRequirements(cmd: ChatCommand | CallbackCommand | null, msg?: Message, cb?: CallbackQuery): Promise<boolean> {
     if (!cmd) return false;
+    if (!msg && !cb) return false;
 
-    if (Environment.ONLY_FOR_CREATOR_MODE && msg.from.id !== Environment.CREATOR_ID) return false;
+    const isChatCommand = "title" in cmd;
+    const isCallbackCommand = "data" in cmd;
+    let title: string;
 
-    const fromId = msg.from?.id || -1;
+    if (isChatCommand) {
+        title = cmd.title;
+    } else if (isCallbackCommand) {
+        title = cmd.data;
+    } else {
+        return false;
+    }
+
+    const cbId = cb?.id;
+    const chatId = msg?.chat?.id || cb?.message?.chat?.id || -1;
+    const messageId = msg?.message_id || cb?.message?.message_id || -1;
+    const fromId = msg?.from?.id || cb?.from?.id || -1;
+    const chatType = msg?.chat?.type || cb?.message?.chat?.type || null;
+
+    if (chatId === -1 || messageId === -1 || fromId === -1 || !chatType) return false;
+
+    if (Environment.ONLY_FOR_CREATOR_MODE && fromId !== Environment.CREATOR_ID) return false;
 
     if (Environment.CHAT_IDS_WHITELIST.size > 0 &&
-        !Environment.CHAT_IDS_WHITELIST.has(msg.chat.id) &&
-        !Environment.ADMIN_IDS.has(msg.chat.id) &&
-        !Environment.ADMIN_IDS.has(msg.from.id)) {
-        console.log(`${cmd.title}: chatId whitelist ignored.`);
+        !Environment.CHAT_IDS_WHITELIST.has(chatId) &&
+        !Environment.ADMIN_IDS.has(chatId) &&
+        !Environment.ADMIN_IDS.has(fromId)) {
+        console.log(`${title}: chatId whitelist ignored.`);
         return false;
     }
 
     const reqs = cmd.requirements;
     if (!reqs) return true;
 
+    const notifyUser = async (text: string) => {
+        if (msg) {
+            await replyToMessage({chat_id: chatId, message_id: messageId, text: text});
+        } else if (cb) {
+            await bot.answerCallbackQuery({
+                callback_query_id: cbId,
+                text: text,
+                cache_time: 0,
+                show_alert: true
+            }).catch(logError);
+        }
+    };
+
     if (reqs.isRequiresBotCreator() && fromId !== Environment.CREATOR_ID) {
-        console.log(`${cmd.title}: creatorId is bad`);
-        await oldReplyToMessage(msg, "Вы не являетесь создателем бота.");
+        console.log(`${title}: creatorId is bad`);
+        await notifyUser("Вы не являетесь создателем бота.");
         return false;
     }
 
     if (reqs.isRequiresBotAdmin() && !Environment.ADMIN_IDS.has(fromId)) {
-        console.log(`${cmd.title}: adminId is bad`);
-        await oldReplyToMessage(msg, "Вы не являетесь администратором бота.");
+        console.log(`${title}: adminId is bad`);
+        await notifyUser("Вы не являетесь администратором бота.");
         return false;
     }
 
     if (reqs.isRequiresChat() && msg.chat.type === "private") {
-        console.log(`${cmd.title}: chatId is bad`);
-        await oldReplyToMessage(msg, "Тут Вам не чат.");
+        console.log(`${title}: chatId is bad`);
+        await notifyUser("Тут Вам не чат.");
         return false;
     }
 
     if (reqs.isRequiresChatAdmin()) {
-        const member = await bot.getChatMember({chat_id: msg.chat.id, user_id: msg.from.id});
-        const isAdmin = member.status === "administrator" || member.status === "creator";
+        const member = await bot.getChatMember({chat_id: chatId, user_id: fromId});
 
-        if (!isAdmin) {
-            console.log(`${cmd.title}: chatAdminId is bad`);
-            await oldReplyToMessage(msg, "Вы не являетесь администратором чата.");
+        if (!isMemberAdmin(member)) {
+            console.log(`${title}: chatAdminId is bad`);
+            await notifyUser("Вы не являетесь администратором чата.");
             return false;
         }
     }
 
-    if (reqs.isRequiresBotChatAdmin() && msg.chat.type !== "private") {
-        const member = await bot.getChatMember({chat_id: msg.chat.id, user_id: botUser.id});
-        const isAdmin = member.status === "administrator" || member.status === "creator";
+    if (reqs.isRequiresBotChatAdmin() && chatType !== "private") {
+        const member = await bot.getChatMember({chat_id: chatId, user_id: botUser.id});
 
-        if (!isAdmin) {
-            console.log(`${cmd.title}: botChatAdminId is bad`);
-            await oldReplyToMessage(msg, "Бот не является администратором чата.");
+        if (!isMemberAdmin(member)) {
+            console.log(`${title}: botChatAdminId is bad`);
+            await notifyUser("Бот не является администратором чата.");
             return false;
         }
     }
 
-    if (reqs.isRequiresReply() && !msg.reply_to_message) {
-        console.log(`${cmd.title}: replyMessage is bad`);
-        await oldReplyToMessage(msg, "Отсутствует ответ на сообщение.");
+    if (reqs.isRequiresReply() && !msg?.reply_to_message) {
+        console.log(`${title}: replyMessage is bad`);
+        await notifyUser("Отсутствует ответ на сообщение.");
         return false;
+    }
+
+    if (reqs.isRequiresSameUser()) {
+        let originalFromId: number | null;
+        try {
+            originalFromId = (await MessageStore.get(chatId, messageId))?.fromId;
+        } catch (e) {
+            logError(e);
+            originalFromId = null;
+        }
+
+        if (originalFromId && fromId !== originalFromId && fromId !== Environment.CREATOR_ID) {
+            console.log(`${title}: sameUser is bad`);
+            await notifyUser("Только автор оригинального сообщения может выполнить это действие.");
+            return false;
+        }
     }
 
     return true;
@@ -148,20 +203,12 @@ export async function executeChatCommand(cmd: ChatCommand | null, msg: Message, 
 }
 
 export async function findAndExecuteCallbackCommand(commands: CallbackCommand[], query: CallbackQuery): Promise<boolean> {
-    const fromId = query.from.id;
     const data = query.data || "";
 
     const cmd = searchCallbackCommand(commands, data);
     if (!cmd) return false;
 
-    // TODO: 15/01/2026, Danil Nikolaev: reimplement
-    const requirements = cmd.requirements;
-    if (requirements) {
-        if (requirements.isRequiresBotAdmin() && !Environment.ADMIN_IDS.has(fromId)) {
-            console.log(`${cmd.data}: adminId is bad: ${fromId}`);
-            return false;
-        }
-    }
+    if (!await checkRequirements(cmd, null, query)) return false;
 
     await cmd.execute(query);
     await cmd.answerCallbackQuery(query);
@@ -310,6 +357,10 @@ export function fullName(from: User): string {
     }
 
     return fullName;
+}
+
+export function isMemberAdmin(member: ChatMember): boolean {
+    return member.status === "administrator" || member.status === "creator";
 }
 
 export function getUptime(): string {
