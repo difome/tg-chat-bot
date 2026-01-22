@@ -12,7 +12,7 @@ export class AdminsRemove extends ChatCommand {
     description = "Remove user from admins";
 
     requirements = Requirements.Build(
-        Requirement.BOT_ADMIN,
+        Requirement.BOT_CREATOR,
         Requirement.REPLY,
         Requirement.CHAT,
     );
