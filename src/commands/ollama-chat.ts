@@ -64,7 +64,6 @@ export class OllamaChat extends ChatCommand {
             const stream = await ollama.chat({
                 model: Environment.OLLAMA_MODEL,
                 stream: true,
-                keep_alive: 300,
                 think: false,
                 messages: chatMessages,
             });
