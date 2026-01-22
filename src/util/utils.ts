@@ -756,7 +756,7 @@ export function startIntervalEditor(params: {
     let stopped = false;
 
     const tick = async () => {
-        if (stopped || (params.uuid && getOllamaRequest(params.uuid)?.done)) return;
+        if (stopped /*|| (params.uuid && getOllamaRequest(params.uuid)?.done)*/) return;
         const next = params.getText();
         if (!next || next === lastSent) return;
 
