@@ -19,7 +19,7 @@ import {Ignore} from "./commands/ignore";
 import {Unignore} from "./commands/unignore";
 import {Ping} from "./commands/ping";
 import {RandomString} from "./commands/random-string";
-import {SystemSpecs} from "./commands/system-specs";
+import {SystemInfo} from "./commands/system-info";
 import {Test} from "./commands/test";
 import {inviteAnswers, kickAnswers, muted, readData, retrieveAnswers} from "./db/database";
 import {Uptime} from "./commands/uptime";
@@ -133,7 +133,7 @@ export const chatCommands: ChatCommand[] = [
     new Ping(),
     new RandomInt(),
     new RandomString(),
-    new SystemSpecs(),
+    new SystemInfo(),
     new Uptime(),
 
     new WhatBetter(),
