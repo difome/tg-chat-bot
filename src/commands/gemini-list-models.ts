@@ -18,15 +18,15 @@ export class GeminiListModels extends ChatCommand {
 
             const modelsString = listResponse.page
                 .sort((a, b) => a.name.localeCompare(b.name))
-                .map(e => `\`${e.name}\``)
+                .map(e => `${e.name}`)
                 .join("\n");
 
-            const text = "Доступные модели:\n\n" + modelsString;
+            const text = "Доступные модели:\n\n" + "<blockquote expandable>" + modelsString + "</blockquote>";
 
             await replyToMessage({
                 message: msg,
                 text: text,
-                parse_mode: "Markdown"
+                parse_mode: "HTML"
             });
         } catch (e) {
             console.error(e);

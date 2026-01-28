@@ -18,16 +18,15 @@ export class MistralListModels extends ChatCommand {
 
             const modelsString = listResponse.data
                 .sort((a, b) => a.name.localeCompare(b.name))
-                .map(e => `\`${e.name}\``)
+                .map(e => `${e.id}`)
                 .join("\n");
 
-            const text = "Доступные модели:\n\n" + modelsString;
+            const text = "Доступные модели:\n\n" + "<blockquote expandable>" + modelsString + "</blockquote>";
 
             await replyToMessage({
-                chat_id: msg.chat.id,
+                message: msg,
                 text: text,
-                parse_mode: "Markdown",
-                message: msg
+                parse_mode: "HTML"
             });
         } catch (e) {
             console.error(e);

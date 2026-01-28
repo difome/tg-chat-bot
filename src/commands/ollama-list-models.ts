@@ -1,7 +1,7 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
 import {ollama} from "../index";
-import {logError, oldReplyToMessage, sendMessage} from "../util/utils";
+import {logError, oldReplyToMessage, replyToMessage} from "../util/utils";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 
@@ -14,18 +14,19 @@ export class OllamaListModels extends ChatCommand {
     async execute(msg: Message): Promise<void> {
         try {
             const listResponse = await ollama.list();
+            console.log(listResponse);
 
             const modelsString = listResponse.models
                 .sort((a, b) => a.name.localeCompare(b.name))
-                .map(e => `\`${e.model}\``)
+                .map(e => `${e.model}`)
                 .join("\n");
 
-            const message = "Доступные модели:\n\n" + modelsString;
+            const text = "Доступные модели:\n\n" + "<blockquote expandable>" + modelsString + "</blockquote>";
 
-            await sendMessage({
-                chat_id: msg.chat.id,
-                text: message,
-                parse_mode: "Markdown",
+            await replyToMessage({
+                message: msg,
+                text: text,
+                parse_mode: "HTML"
             });
         } catch (e) {
             console.error(e);

@@ -2,7 +2,6 @@ import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
 import {
     collectReplyChainText,
-    editMessageText,
     escapeMarkdownV2Text,
     extractText,
     logError,
@@ -56,7 +55,7 @@ export class GeminiChat extends ChatCommand {
 
         let waitMessage: Message;
 
-        const startTime = new Date().getSeconds();
+        const startTime = Date.now();
 
         try {
             waitMessage = await bot.sendMessage({
@@ -73,15 +72,27 @@ export class GeminiChat extends ChatCommand {
                 contents: chatContent,
             });
 
-            let messageText = "";
+            let currentText = "";
             let shouldBreak = false;
-            let diff = 0;
 
             const editor = startIntervalEditor({
                 intervalMs: 4500,
-                getText: () => messageText,
+                getText: () => currentText,
                 editFn: async (text) => {
-                    await editMessageText(chatId, waitMessage.message_id, escapeMarkdownV2Text(text), "Markdown");
+                    await bot.editMessageText(
+                        {
+                            chat_id: chatId,
+                            message_id: waitMessage.message_id,
+                            text: escapeMarkdownV2Text(text),
+                            parse_mode: "Markdown"
+                        }
+                    ).catch(logError);
+
+                    console.log("editMessageText", text);
+
+                    waitMessage.reply_to_message = msg;
+                    waitMessage.text = text;
+                    await MessageStore.put(waitMessage);
                 },
                 onStop: async () => {
                 }
@@ -91,42 +102,35 @@ export class GeminiChat extends ChatCommand {
             try {
                 for await (const chunk of stream) {
                     const text = chunk.text;
+                    currentText += text;
 
-                    const length = (messageText + text).length;
-                    if (length > 4096) {
-                        messageText = messageText.slice(0, 4093) + "...";
+                    if (currentText.length > 4096) {
+                        currentText = currentText.slice(0, 4093) + "...";
                         shouldBreak = true;
-                    } else {
-                        messageText += text;
                     }
+
+                    console.log("messageText", currentText);
+                    console.log("length", currentText.length);
 
                     if (shouldBreak) {
-                        console.log("messageText", messageText);
-                        console.log("length", length);
                         console.log("break", true);
-
-                        diff = Math.abs(new Date().getSeconds() - startTime);
-                        await editor.tick();
-                        await editor.stop();
                         break;
                     }
-
-                    console.log("messageText", messageText);
-                    console.log("length", messageText.length);
-
-                    diff = Math.abs(new Date().getSeconds() - startTime);
                 }
             } finally {
                 await editor.tick();
                 await editor.stop();
 
+                if (!shouldBreak) {
+                    console.log("ended", true);
+                }
+
+                const diff = Math.abs(Date.now() - startTime) / 1000.0;
                 console.log("time", diff);
-                console.log("ended", true);
 
                 waitMessage.reply_to_message = msg;
-                waitMessage.text = messageText;
+                waitMessage.text = currentText;
                 await MessageStore.put(waitMessage);
-
                 await oldReplyToMessage(waitMessage, `⏱️ ${diff}s`);
             }
         } catch (error) {
