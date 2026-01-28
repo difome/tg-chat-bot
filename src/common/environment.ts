@@ -67,7 +67,7 @@ export class Environment {
         Environment.OLLAMA_API_KEY = process.env.OLLAMA_API_KEY;
 
         Environment.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        Environment.GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+        Environment.GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
 
         Environment.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
         Environment.MISTRAL_MODEL = process.env.MISTRAL_MODEL || "mistral-small-latest";
