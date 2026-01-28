@@ -25,14 +25,12 @@ npm run build && npm start
 
 **With Docker:**
 ```bash
-# Set IS_DOCKER=true in .env
 docker build -f Dockerfile -t tg-bot .
 docker run -d --env-file .env -v $(pwd)/data:/config/data tg-bot
 ```
 
 **With Docker (Bun):**
 ```bash
-# Set IS_DOCKER=true in .env
 docker build -f Dockerfile-bun -t tg-bot-bun .
 docker run -d --env-file .env -v $(pwd)/data:/config/data tg-bot-bun
 ```
