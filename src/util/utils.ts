@@ -315,7 +315,7 @@ export async function initSystemSpecs(): Promise<void> {
             `OS: ${os.distro}\n` +
             `RUNTIME: ${run.runtime} ${run.version}\n` +
             `DOCKER: ${Environment.IS_DOCKER}\n` +
-            `CPU: ${cpu.manufacturer} ${cpu.brand} ${cpu.physicalCores} cores ${cpu.cores} threads (${cpu.processors} threads per core)\n` +
+            `CPU: ${cpu.manufacturer} ${cpu.brand} ${cpu.physicalCores} cores ${cpu.cores} threads\n` +
             `RAM: ${ramSize} GB`;
 
         setSystemInfo(text);
