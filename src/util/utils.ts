@@ -478,12 +478,12 @@ export function isStoredMessage(msg: Message | StoredMessage): msg is StoredMess
     return "id" in msg;
 }
 
-export async function loadImageIfExists(msg: Message | StoredMessage): Promise<string | null> {
+export async function loadImagesIfExists(msg: Message | StoredMessage): Promise<string[] | null> {
     if (isStoredMessage(msg)) {
         return msg.photoMaxSizeFilePath;
     }
 
-    let imageFilePath: string | null = null;
+    const imageFilePaths: string[] = [];
 
     const maxSize = await getPhotoMaxSize(msg.photo);
     if (maxSize) {
@@ -492,7 +492,7 @@ export async function loadImageIfExists(msg: Message | StoredMessage): Promise<s
             fs.mkdirSync(imagePath);
         }
 
-        imageFilePath = path.join(imagePath, maxSize.unique_file_id + ".jpg");
+        let imageFilePath = path.join(imagePath, maxSize.unique_file_id + ".jpg");
         if (!fs.existsSync(imageFilePath)) {
             const res = await axios.get<ArrayBuffer>(maxSize.url, {responseType: "arraybuffer"});
             const src = Buffer.from(res.data);
@@ -504,45 +504,49 @@ export async function loadImageIfExists(msg: Message | StoredMessage): Promise<s
                 imageFilePath = null;
             }
         }
+
+        if (imageFilePath) {
+            imageFilePaths.push(imageFilePath);
+        }
     }
 
-    return imageFilePath;
+    return imageFilePaths;
 }
 
 export async function collectReplyChainText(triggerMsg: Message, limit: number = 40, includeTrigger = true, cutPrefix: boolean = true): Promise<MessagePart[]> {
+    const parts: MessagePart[] = [];
+
+    const pushPart = async (msg: Message | StoredMessage, textRequired: boolean = false) => {
+        const rawText = extractTextMessage(msg);
+        const cleanText = cutPrefix ? cutPrefixes(rawText) : rawText;
+        const images = await loadImagesIfExists(msg);
+
+        if (!cleanText && textRequired) return;
+        if (!cleanText && !images?.length) return;
+
+        const fromId = isStoredMessage(msg) ? msg.fromId : msg.from.id;
+        const firstName = isStoredMessage(msg) ?
+            (await UserStore.get(msg.fromId))?.firstName : msg.from.first_name;
+
+        parts.push({
+            bot: fromId === botUser.id,
+            content: cleanText ? cleanText : "",
+            name: firstName,
+            images: images ? images : []
+        });
+    };
+
     const chatId = triggerMsg.chat.id as number;
 
-    const parts: MessagePart[] = [];
     if (includeTrigger) {
-        const t = extractTextMessage(triggerMsg);
-        const text = cutPrefix ? cutPrefixes(t) : t;
-        const img = await loadImageIfExists(triggerMsg);
-        if (text) {
-            parts.push({
-                bot: triggerMsg.from.id === botUser.id,
-                content: text,
-                name: triggerMsg.from.first_name,
-                images: img ? [img] : []
-            });
-        }
+        await pushPart(triggerMsg);
     }
 
     const first = triggerMsg.reply_to_message;
     if (!first) {
         return parts;
     }
-
-    const ft = extractTextMessage(first);
-    const firstText = cutPrefix ? cutPrefixes(ft) : ft;
-    if (firstText || first.photo) {
-        const img = await loadImageIfExists(first);
-        parts.push({
-            bot: first.from.id === botUser.id,
-            content: firstText,
-            name: first.from.first_name,
-            images: img ? [img] : []
-        });
-    }
+    await pushPart(first, false);
 
     let curId = first.message_id;
 
@@ -552,20 +556,7 @@ export async function collectReplyChainText(triggerMsg: Message, limit: number =
         if (!parentId) break;
 
         const parent = await messageDao.getById({chatId: chatId, id: parentId});
-        const pt = extractTextMessage(parent);
-        const parentText = cutPrefix ? cutPrefixes(pt) : pt;
-
-        if (!parentText && !parent?.photoMaxSizeFilePath) break;
-
-        const user = await UserStore.get(parent.fromId);
-        const img = await loadImageIfExists(parent);
-
-        parts.push({
-            bot: parent.fromId === botUser.id,
-            content: parentText,
-            name: user?.firstName,
-            images: img ? [img] : []
-        });
+        await pushPart(parent, false);
         curId = parentId;
     }
 

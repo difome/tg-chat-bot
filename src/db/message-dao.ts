@@ -89,6 +89,7 @@ export class MessageDao extends Dao<StoredMessage> {
                 fromId: msg.fromId,
                 text: msg.text,
                 date: msg.date,
+                photoMaxSizeFilePath: msg.photoMaxSizeFilePath?.join(";"),
             };
         });
     }
@@ -102,7 +103,7 @@ export class MessageDao extends Dao<StoredMessage> {
                 fromId: m.fromId,
                 text: m.text,
                 date: m.date,
-                photoMaxSizeFilePath: m.photoMaxSizeFilePath
+                photoMaxSizeFilePath: m.photoMaxSizeFilePath?.split(";")
             };
         });
     }

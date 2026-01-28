@@ -48,12 +48,19 @@ export class OllamaChat extends ChatCommand {
         const startTime = Date.now();
 
         try {
+            const imagesCount = chatMessages.reduce((total, curr) => {
+                return total + (curr.images?.length ?? 0);
+            }, 0);
+
             const uuid = crypto.randomUUID();
             const cancelMarkup = {inline_keyboard: [[Cancel.withData(new OllamaCancel().data + " " + uuid).asButton()]]};
 
             waitMessage = await bot.sendMessage({
                 chat_id: chatId,
-                text: Environment.waitText,
+                text: imagesCount ?
+                    imagesCount > 1 ? Environment.analyzingPicturesText : Environment.analyzingPictureText
+                    : Environment.waitText,
+
                 reply_parameters: {
                     chat_id: chatId,
                     message_id: msg.message_id

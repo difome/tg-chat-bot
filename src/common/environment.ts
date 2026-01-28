@@ -36,6 +36,8 @@ export class Environment {
     static MISTRAL_MODEL: string;
 
     static waitText = "⏳ Дайте-ка подумать...";
+    static analyzingPictureText = "🔍 Внимательно изучаю изображение...";
+    static analyzingPicturesText = "🔍 Внимательно изучаю изображения...";
     static ollamaCancelledText = "```Ollama\n❌ Отменено```";
 
     static load() {
