@@ -64,9 +64,16 @@ export class MistralChat extends ChatCommand {
         const startTime = Date.now();
 
         try {
+            const imagesCount = chatMessages.reduce((total, curr) => {
+                return total + (curr.content.filter(c => c.type === "image_url")?.length ?? 0);
+            }, 0);
+
             waitMessage = await bot.sendMessage({
                 chat_id: chatId,
-                text: Environment.waitText,
+                text: imagesCount ?
+                    imagesCount > 1 ? Environment.analyzingPicturesText : Environment.analyzingPictureText
+                    : Environment.waitText,
+
                 reply_parameters: {
                     chat_id: chatId,
                     message_id: msg.message_id
