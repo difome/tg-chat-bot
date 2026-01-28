@@ -8,8 +8,6 @@ import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 import {Environment} from "../common/environment";
 
-const cancelledText = "```Ollama\n❌ Отменено```";
-
 export class OllamaCancel extends CallbackCommand {
 
     data = "/cancel_ollama";
@@ -48,17 +46,27 @@ export class OllamaCancel extends CallbackCommand {
 
         if (msg?.text?.trim()?.length > 0) {
             content = msg?.text.trim();
-            if (content.length + cancelledText.length > 4096) {
-                content = content.substring(0, 4096 - cancelledText.length - 2) + "\n";
+            if (content.length + Environment.ollamaCancelledText.length > 4096) {
+                content = content.substring(0, 4096 - Environment.ollamaCancelledText.length - 2) + "\n";
             }
         }
 
-        await bot.editMessageText({
-            chat_id: chatId,
-            message_id: messageId,
-            text: `${content ? content : ""}${cancelledText}`,
-            parse_mode: "Markdown",
-            reply_markup: {inline_keyboard: []},
-        }).catch(logError);
+        const newText = `${content ? content : ""}${Environment.ollamaCancelledText}`;
+
+        try {
+            await bot.editMessageText({
+                chat_id: chatId,
+                message_id: messageId,
+                text: newText,
+                parse_mode: "Markdown",
+                reply_markup: {inline_keyboard: []},
+            });
+
+            if (msg) {
+                await MessageStore.put(msg);
+            }
+        } catch (e) {
+            logError(e);
+        }
     }
 }

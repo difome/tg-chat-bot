@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import {Environment} from "../common/environment";
+import {logError} from "../util/utils";
 
 
 export let muted: Set<number> = new Set<number>();
@@ -57,7 +58,7 @@ export async function readData(): Promise<void> {
 
         return Promise.resolve();
     } catch (e) {
-        console.error(e);
+        logError(e);
         return Promise.reject(e);
     }
 }
@@ -91,7 +92,7 @@ export async function retrieveAnswers(): Promise<void> {
         json.day.forEach(e => dayAnswers.push(e));
         return Promise.resolve();
     } catch (e) {
-        console.error(e);
+        logError(e);
         return Promise.reject(e);
     }
 }

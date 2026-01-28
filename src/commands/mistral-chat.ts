@@ -5,7 +5,6 @@ import {Message} from "typescript-telegram-bot-api";
 import {
     collectReplyChainText,
     escapeMarkdownV2Text,
-    extractText,
     logError,
     oldReplyToMessage,
     startIntervalEditor
@@ -34,14 +33,14 @@ export class MistralChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        const messageParts = await collectReplyChainText(msg, "/mistral");
+        const messageParts = await collectReplyChainText(msg);
         console.log("MESSAGE PARTS", messageParts);
 
         const chatMessages = messageParts.map(part => {
             const content = [];
             content.push({
                 type: "text",
-                text: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, Environment.BOT_PREFIX),
+                text: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + part.content,
             });
 
             if (part.images && part.images.length > 0) {
@@ -143,7 +142,7 @@ export class MistralChat extends ChatCommand {
                 await oldReplyToMessage(waitMessage, `⏱️ ${diff}s`);
             }
         } catch (error) {
-            console.error(error);
+            logError(error);
             await oldReplyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
     }

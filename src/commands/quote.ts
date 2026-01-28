@@ -34,7 +34,7 @@ try {
     GlobalFonts.registerFromPath("./assets/JetBrainsMono-Italic.ttf", "JetBrainsMonoItalic");
     GlobalFonts.registerFromPath("./assets/JetBrainsMono-Regular.ttf", "JetBrainsMonoRegular");
 } catch (e) {
-    console.error(e);
+    logError(e);
 }
 
 export class Quote extends ChatCommand {
@@ -75,7 +75,7 @@ export class Quote extends ChatCommand {
                 },
             }).catch(logError);
         } catch (e) {
-            console.error(e);
+            logError(e);
             await oldSendMessage(msg, "Не смог собрать цитату 😢").catch(logError);
         }
     }

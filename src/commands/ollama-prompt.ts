@@ -182,7 +182,7 @@ export class OllamaPrompt extends ChatCommand {
                 reply_markup: {inline_keyboard: []}
             }).catch(logError);
 
-            console.error(error);
+            logError(error);
             await oldReplyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
     }

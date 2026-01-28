@@ -40,7 +40,7 @@ export const ignoreIfMarkupFailed = (e: Error | TelegramError) => {
     }
 };
 
-export const logError = (e: Error | TelegramError) => {
+export const logError = (e: Error | TelegramError | string) => {
     console.error(e);
 };
 
@@ -231,7 +231,7 @@ export async function editMessageText(chatId: number, messageId: number, message
         }).catch(ignoreIfMarkupFailed);
         return Promise.resolve();
     } catch (e) {
-        console.error(e);
+        logError(e);
 
         if (e instanceof TelegramError && e.response.description.includes("Too Many Requests")) {
             const delay = Number(e.message.split("retry after ")[1]) || 30;
@@ -301,7 +301,7 @@ export async function oldReplyToMessage(message: Message, text: string, parseMod
 }
 
 export async function sendErrorPlaceholder(message: Message): Promise<Message> {
-    return await sendMessage({message: message, text: "Произошла ошибка ⚠️"}).catch(console.error) as Message;
+    return await sendMessage({message: message, text: "Произошла ошибка ⚠️"}).catch(logError) as Message;
 }
 
 export async function initSystemSpecs(): Promise<void> {
@@ -446,34 +446,32 @@ export async function getUserAvatar(userId: number): Promise<Buffer | null> {
     return Buffer.from(res.data);
 }
 
-export function extractTextMessage(msg: Message, prefix: string = ""): string | null {
-    let text = (msg?.text ?? msg?.caption ?? "").trim();
-    if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
-        text = text.substring(prefix.length);
-    }
-
-    text = text.trim();
+export function extractTextMessage(msg: Message | StoredMessage | string): string | null {
+    const text = (typeof msg === "string" ? msg : isStoredMessage(msg) ? msg.text : msg?.text ?? msg?.caption ?? "").trim();
     if (text.length === 0) return null;
-
     return text;
 }
 
-export function extractTextStored(msg: StoredMessage, prefix: string): string {
-    let text = (msg?.text ?? "").trim();
-    if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
-        text = text.substring(prefix.length).trim();
+export function cutPrefixes(msg: Message | StoredMessage | string): string {
+    const prefixes = [
+        Environment.BOT_PREFIX,
+        `/gemini@${botUser.username}`,
+        "/gemini",
+        `/mistral@${botUser.username}`,
+        "/mistral"
+    ];
+
+    const text = extractTextMessage(msg);
+    let newText = text;
+
+    for (const prefix of prefixes) {
+        if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
+            newText = newText.substring(prefix.length).trim();
+            break;
+        }
     }
 
-    return text;
-}
-
-export function extractText(text: string, prefix: string): string {
-    if (!text) return "";
-    if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
-        text = text.substring(prefix.length).trim();
-    }
-
-    return text;
+    return newText;
 }
 
 export function isStoredMessage(msg: Message | StoredMessage): msg is StoredMessage {
@@ -502,7 +500,7 @@ export async function loadImageIfExists(msg: Message | StoredMessage): Promise<s
             try {
                 fs.writeFileSync(imageFilePath, src);
             } catch (e) {
-                console.error(e);
+                logError(e);
                 imageFilePath = null;
             }
         }
@@ -511,18 +509,18 @@ export async function loadImageIfExists(msg: Message | StoredMessage): Promise<s
     return imageFilePath;
 }
 
-export async function collectReplyChainText(triggerMsg: Message, prefix: string = Environment.BOT_PREFIX, limit: number = 40, includeTrigger = true): Promise<MessagePart[]> {
+export async function collectReplyChainText(triggerMsg: Message, limit: number = 40, includeTrigger = true, cutPrefix: boolean = true): Promise<MessagePart[]> {
     const chatId = triggerMsg.chat.id as number;
 
     const parts: MessagePart[] = [];
     if (includeTrigger) {
-        const t = extractTextMessage(triggerMsg, prefix);
-        const img = (await loadImageIfExists(triggerMsg)) /*|| triggerMsg.reply_to_message ?
-            (await loadImageIfExists(triggerMsg.reply_to_message)) : null*/;
-        if (t) {
+        const t = extractTextMessage(triggerMsg);
+        const text = cutPrefix ? cutPrefixes(t) : t;
+        const img = await loadImageIfExists(triggerMsg);
+        if (text) {
             parts.push({
                 bot: triggerMsg.from.id === botUser.id,
-                content: t,
+                content: text,
                 name: triggerMsg.from.first_name,
                 images: img ? [img] : []
             });
@@ -534,7 +532,8 @@ export async function collectReplyChainText(triggerMsg: Message, prefix: string 
         return parts;
     }
 
-    const firstText = extractTextMessage(first, prefix);
+    const ft = extractTextMessage(first);
+    const firstText = cutPrefix ? cutPrefixes(ft) : ft;
     if (firstText || first.photo) {
         const img = await loadImageIfExists(first);
         parts.push({
@@ -553,14 +552,17 @@ export async function collectReplyChainText(triggerMsg: Message, prefix: string 
         if (!parentId) break;
 
         const parent = await messageDao.getById({chatId: chatId, id: parentId});
-        if (!parent?.text && !parent?.photoMaxSizeFilePath) break;
+        const pt = extractTextMessage(parent);
+        const parentText = cutPrefix ? cutPrefixes(pt) : pt;
+
+        if (!parentText && !parent?.photoMaxSizeFilePath) break;
 
         const user = await UserStore.get(parent.fromId);
         const img = await loadImageIfExists(parent);
 
         parts.push({
             bot: parent.fromId === botUser.id,
-            content: extractTextStored(parent, prefix),
+            content: parentText,
             name: user?.firstName,
             images: img ? [img] : []
         });
@@ -829,7 +831,7 @@ export function startIntervalEditor(params: {
             lastSent = next;
         } catch (e) {
             if ((e?.description ?? e?.message ?? "").includes("message is not modified")) return;
-            console.error("edit failed:", e);
+            logError("edit failed: " + e);
         }
     };
 

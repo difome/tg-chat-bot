@@ -29,7 +29,7 @@ export class GeminiListModels extends ChatCommand {
                 parse_mode: "HTML"
             });
         } catch (e) {
-            console.error(e);
+            logError(e);
             await replyToMessage({message: msg, text: "Не получилось загрузить список моделей"}).catch(logError);
         }
     }

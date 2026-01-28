@@ -1,19 +1,18 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {
-    collectReplyChainText,
-    escapeMarkdownV2Text,
-    extractText,
-    logError,
-    oldReplyToMessage,
-    startIntervalEditor
-} from "../util/utils";
 import {Environment} from "../common/environment";
 import {bot, googleAi} from "../index";
 import {MessageStore} from "../common/message-store";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
 import {ApiError} from "@google/genai";
+import {
+    collectReplyChainText,
+    escapeMarkdownV2Text,
+    logError,
+    oldReplyToMessage,
+    startIntervalEditor
+} from "../util/utils";
 
 export class GeminiChat extends ChatCommand {
     command = "gemini";
@@ -34,13 +33,13 @@ export class GeminiChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        const messageParts = await collectReplyChainText(msg, "/gemini");
+        const messageParts = await collectReplyChainText(msg);
         console.log("MESSAGE PARTS", messageParts);
 
         const chatMessages = messageParts.map(part => {
             return {
                 role: part.bot ? "assistant" : "user",
-                content: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, "/gemini")
+                content: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + part.content
             };
         });
         chatMessages.reverse();
@@ -134,7 +133,7 @@ export class GeminiChat extends ChatCommand {
                 await oldReplyToMessage(waitMessage, `⏱️ ${diff}s`);
             }
         } catch (error) {
-            console.error(error);
+            logError(error);
 
             if (error instanceof ApiError) {
                 if (error.status === 429) {

@@ -29,7 +29,7 @@ export class Ae extends ChatCommand {
                 return;
             }
 
-            console.error(`${text}
+            logError(`${text}
                 * Stacktrace: ${e.stack}`);
 
             await oldSendMessage(msg, text).catch(logError);

@@ -4,7 +4,7 @@ import {Requirement} from "../base/requirement";
 import {Message} from "typescript-telegram-bot-api";
 import {bot, ollama} from "../index";
 import {WebSearchResponse} from "../model/web-search-response";
-import {editMessageText} from "../util/utils";
+import {editMessageText, logError} from "../util/utils";
 import {Environment} from "../common/environment";
 
 export class OllamaSearch extends ChatCommand {
@@ -42,7 +42,7 @@ export class OllamaSearch extends ChatCommand {
 
             await editMessageText(chatId, wait.message_id, message);
         } catch (error) {
-            console.error(error);
+            logError(error);
         }
         return Promise.resolve();
     }

@@ -29,7 +29,7 @@ export class MistralListModels extends ChatCommand {
                 parse_mode: "HTML"
             });
         } catch (e) {
-            console.error(e);
+            logError(e);
             await oldReplyToMessage(msg, "Не получилось загрузить список моделей").catch(logError);
         }
     }

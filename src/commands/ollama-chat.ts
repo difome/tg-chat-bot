@@ -4,7 +4,6 @@ import {abortOllamaRequest, bot, getOllamaRequest, ollama, ollamaRequests} from 
 import {
     collectReplyChainText,
     escapeMarkdownV2Text,
-    extractText,
     logError,
     oldReplyToMessage,
     startIntervalEditor
@@ -37,7 +36,7 @@ export class OllamaChat extends ChatCommand {
         const chatMessages = messageParts.map(part => {
             return {
                 role: part.bot ? "assistant" : "user",
-                content: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + extractText(part.content, Environment.BOT_PREFIX),
+                content: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + part.content,
                 images: part.images
             };
         });
@@ -198,7 +197,7 @@ export class OllamaChat extends ChatCommand {
                 reply_markup: {inline_keyboard: []}
             }).catch(logError);
 
-            console.error(error);
+            logError(error);
             await oldReplyToMessage(waitMessage, `Произошла ошибка!\n${error.toString()}`).catch(logError);
         }
     }

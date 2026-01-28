@@ -2,6 +2,7 @@
 import {CallbackQuery, InlineKeyboardButton} from "typescript-telegram-bot-api";
 import {Requirements} from "./requirements";
 import {bot} from "../index";
+import {logError} from "../util/utils";
 
 export abstract class CallbackCommand {
 
@@ -22,7 +23,7 @@ export abstract class CallbackCommand {
     }
 
     async answerCallbackQuery(query: CallbackQuery): Promise<void> {
-        bot.answerCallbackQuery(this.getOptions(query)).catch(console.error);
+        bot.answerCallbackQuery(this.getOptions(query)).catch(logError);
     }
 
     asButton(): InlineKeyboardButton {

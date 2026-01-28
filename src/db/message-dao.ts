@@ -3,10 +3,8 @@ import {DatabaseManager} from "./database-manager";
 import {StoredMessage} from "../model/stored-message";
 import {and, eq} from "drizzle-orm";
 import {inArray} from "drizzle-orm/sql/expressions/conditions";
-import {Message} from "typescript-telegram-bot-api";
 import {Dao} from "../base/dao";
-import {buildExcludedSet, extractTextMessage} from "../util/utils";
-import {Environment} from "../common/environment";
+import {buildExcludedSet} from "../util/utils";
 
 export class MessageDao extends Dao<StoredMessage> {
 
@@ -82,14 +80,14 @@ export class MessageDao extends Dao<StoredMessage> {
         return true;
     }
 
-    mapTo(messages: Message[]): MessageInsert[] {
+    mapStoredTo(messages: StoredMessage[]): MessageInsert[] {
         return messages.map(msg => {
             return {
-                chatId: msg.chat.id,
-                id: msg.message_id,
-                replyToMessageId: msg.reply_to_message?.message_id,
-                fromId: msg.from.id,
-                text: extractTextMessage(msg, Environment.BOT_PREFIX),
+                chatId: msg.chatId,
+                id: msg.id,
+                replyToMessageId: msg.replyToMessageId,
+                fromId: msg.fromId,
+                text: msg.text,
                 date: msg.date,
             };
         });

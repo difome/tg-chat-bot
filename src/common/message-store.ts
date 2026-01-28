@@ -1,7 +1,6 @@
 import {StoredMessage} from "../model/stored-message";
 import {Message} from "typescript-telegram-bot-api";
-import {extractTextMessage} from "../util/utils";
-import {Environment} from "./environment";
+import {extractTextMessage, isStoredMessage} from "../util/utils";
 import {messageDao} from "../index";
 
 export class MessageStore {
@@ -15,19 +14,18 @@ export class MessageStore {
         return this.map;
     }
 
-    static async put(m: Message, prefix: string = Environment.BOT_PREFIX) {
-        const msg: StoredMessage = {
+    static async put(m: Message | StoredMessage) {
+        const msg: StoredMessage = isStoredMessage(m) ? m : {
             chatId: m.chat.id,
             id: m.message_id,
             replyToMessageId: m.reply_to_message?.message_id ?? null,
             fromId: m.from.id,
-            text: extractTextMessage(m, prefix),
+            text: extractTextMessage(m),
             date: m.date ?? 0,
         };
 
-        this.map.set(this.key(m.chat.id, m.message_id), msg);
-
-        await messageDao.insert(messageDao.mapTo([m]));
+        this.map.set(this.key(msg.chatId, msg.id), msg);
+        await messageDao.insert(messageDao.mapStoredTo([msg]));
     }
 
     static async get(chatId: number, messageId: number): Promise<StoredMessage | null> {

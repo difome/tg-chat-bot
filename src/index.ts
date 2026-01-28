@@ -71,7 +71,7 @@ import {GeminiGetModel} from "./commands/gemini-get-model";
 import {GeminiSetModel} from "./commands/gemini-set-model";
 import {Debug} from "./commands/debug";
 
-process.setUncaughtExceptionCaptureCallback(console.error);
+process.setUncaughtExceptionCaptureCallback(logError);
 
 Environment.load();
 DatabaseManager.init();
@@ -112,7 +112,7 @@ export function abortOllamaRequest(uuid: string): boolean {
         updateOllamaRequest(uuid, {...request, done: true});
         return true;
     } catch (e) {
-        console.error(e);
+        logError(e);
         return false;
     }
 }
@@ -227,7 +227,7 @@ async function main() {
 
         console.log("Bot started!");
     } catch (error) {
-        console.error(error);
+        logError(error);
     }
 }
 
@@ -336,7 +336,7 @@ bot.on("inline_query", async (query) => {
                 results: queryResults,
             });
         } catch (e) {
-            console.error(e);
+            logError(e);
         }
     } else {
         await bot.answerInlineQuery({
@@ -351,4 +351,4 @@ bot.on("callback_query", async (query) => {
     await findAndExecuteCallbackCommand(callbackCommands, query);
 });
 
-main().catch(console.error);
+main().catch(logError);
