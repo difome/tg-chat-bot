@@ -117,12 +117,6 @@ export function abortOllamaRequest(uuid: string): boolean {
     }
 }
 
-export let systemInfoText: string = "";
-
-export function setSystemInfo(info: string) {
-    systemInfoText = info;
-}
-
 export const chatCommands: ChatCommand[] = [
     new Start(),
     new Help(),

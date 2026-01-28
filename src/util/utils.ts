@@ -12,7 +12,7 @@ import {
 } from "typescript-telegram-bot-api";
 import {Environment} from "../common/environment";
 import {TelegramError} from "typescript-telegram-bot-api/dist/errors";
-import {bot, botUser, messageDao, setSystemInfo} from "../index";
+import {bot, botUser, messageDao} from "../index";
 import os from "os";
 import axios from "axios";
 import {MessagePart} from "../common/message-part";
@@ -24,6 +24,7 @@ import {sql, type SQL} from "drizzle-orm";
 import fs from "node:fs";
 import path from "node:path";
 import {MessageStore} from "../common/message-store";
+import {SystemInfo} from "../commands/system-info";
 
 export const ignore = () => {
 };
@@ -252,6 +253,7 @@ export type SendOptions = {
     message_id?: number;
     text: string,
     parse_mode?: ParseMode,
+    disableLinkPreview?: boolean
 };
 
 export async function oldSendMessage(message: Message, text: string, parseMode?: ParseMode): Promise<Message> {
@@ -268,7 +270,10 @@ export async function sendMessage(options: SendOptions): Promise<Message> {
     const response = await bot.sendMessage({
         chat_id: options.chat_id ?? options.message?.chat?.id,
         text: options.text,
-        parse_mode: options.parse_mode
+        parse_mode: options.parse_mode,
+        link_preview_options: {
+            is_disabled: options.disableLinkPreview
+        }
     });
 
     return Promise.resolve(response);
@@ -281,6 +286,9 @@ export async function replyToMessage(options: SendOptions): Promise<Message> {
         parse_mode: options.parse_mode,
         reply_parameters: {
             message_id: options.message_id || options.message?.message_id
+        },
+        link_preview_options: {
+            is_disabled: options.disableLinkPreview
         }
     });
 
@@ -318,7 +326,7 @@ export async function initSystemSpecs(): Promise<void> {
             `CPU: ${cpu.manufacturer} ${cpu.brand} ${cpu.physicalCores} cores ${cpu.cores} threads\n` +
             `RAM: ${ramSize} GB`;
 
-        setSystemInfo(text);
+        SystemInfo.setSystemInfo(text);
         return Promise.resolve();
     } catch (e) {
         return Promise.reject(e);
