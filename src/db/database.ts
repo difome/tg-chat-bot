@@ -1,9 +1,7 @@
 import * as fs from "fs";
 import {Environment} from "../common/environment";
 import {logError} from "../util/utils";
-
-
-export let muted: Set<number> = new Set<number>();
+import {Answers} from "../model/answers";
 
 type DataJsonFile = {
     admins: number[]
@@ -11,39 +9,6 @@ type DataJsonFile = {
 }
 
 export let jsonFile: DataJsonFile;
-
-type AnswersJsonFile = {
-    test: string[]
-    prefix: string[]
-    better: string[]
-    who: string[]
-    kick: string[]
-    invite: string[]
-    day: number[]
-}
-
-export const testAnswers: string[] = [];
-export const prefixAnswers: string[] = [];
-export const betterAnswers: string[] = [];
-export const whoAnswers: string[] = [];
-export const kickAnswers: string[] = [];
-export const inviteAnswers: string[] = [];
-export const dayAnswers: number[] = [];
-
-export async function addMute(id: number): Promise<boolean> {
-    if (muted.has(id)) return Promise.resolve(false);
-
-    muted.add(id);
-    await saveData();
-    return Promise.resolve(true);
-}
-
-export async function removeMute(id: number): Promise<boolean> {
-    if (!muted.has(id)) return Promise.resolve(false);
-    muted.delete(id);
-    await saveData();
-    return Promise.resolve(true);
-}
 
 export async function readData(): Promise<void> {
     try {
@@ -53,8 +18,7 @@ export async function readData(): Promise<void> {
         admins.unshift(Environment.CREATOR_ID);
 
         Environment.setAdmins(new Set<number>(admins));
-
-        muted = new Set<number>(jsonFile.muted || []);
+        Environment.setMuted(new Set<number>(jsonFile.muted || []));
 
         return Promise.resolve();
     } catch (e) {
@@ -69,7 +33,7 @@ export async function saveData(): Promise<void> {
     jsonFile.admins = adminIds;
 
     const mutedList: number[] = [];
-    muted.forEach(id => mutedList.push(id));
+    Environment.MUTED_IDS.forEach(id => mutedList.push(id));
     jsonFile.muted = mutedList;
 
     try {
@@ -82,14 +46,8 @@ export async function saveData(): Promise<void> {
 
 export async function retrieveAnswers(): Promise<void> {
     try {
-        const json: AnswersJsonFile = JSON.parse(fs.readFileSync(`${Environment.DATA_PATH}/answers.json`).toString());
-        json.test.forEach(e => testAnswers.push(e));
-        json.prefix.forEach(e => prefixAnswers.push(e));
-        json.better.forEach(e => betterAnswers.push(e));
-        json.who.forEach(e => whoAnswers.push(e));
-        json.kick.forEach(e => kickAnswers.push(e));
-        json.invite.forEach(e => inviteAnswers.push(e));
-        json.day.forEach(e => dayAnswers.push(e));
+        const json: Answers = JSON.parse(fs.readFileSync(`${Environment.DATA_PATH}/answers.json`).toString());
+        Environment.setAnswers(json);
         return Promise.resolve();
     } catch (e) {
         logError(e);

@@ -34,7 +34,8 @@ export class GeminiChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        const messageParts = await collectReplyChainText(msg);
+        const storedMsg = await MessageStore.get(chatId, msg.message_id);
+        const messageParts = await collectReplyChainText(storedMsg);
         console.log("MESSAGE PARTS", messageParts);
 
         const chatMessages = messageParts.map(part => {
@@ -64,7 +65,7 @@ export class GeminiChat extends ChatCommand {
         if (messageParts[0].images?.length) {
             const images = messageParts[0].images;
 
-            images.forEach(image=>{
+            images.forEach(image => {
                 const base64Image = Buffer.from(fs.readFileSync(image)).toString("base64");
                 input.push({
                     type: "image",
@@ -143,6 +144,10 @@ export class GeminiChat extends ChatCommand {
                                         break;
                                     }
                                     break;
+                                }
+                                case "image": {
+                                    const image = event.delta.data;
+                                    console.log("image", image);
                                 }
                             }
                     }

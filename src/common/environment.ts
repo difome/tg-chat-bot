@@ -1,10 +1,12 @@
 import path from "node:path";
 import {saveData} from "../db/database";
+import {Answers} from "../model/answers";
 
 export class Environment {
     static BOT_TOKEN: string;
     static TEST_ENVIRONMENT: boolean;
     static ADMIN_IDS: Set<number> = new Set<number>();
+    static MUTED_IDS: Set<number> = new Set<number>();
     static CHAT_IDS_WHITELIST: Set<number> = new Set<number>();
     static BOT_PREFIX: string;
     static CREATOR_ID: number;
@@ -15,9 +17,7 @@ export class Environment {
 
     static ONLY_FOR_CREATOR_MODE: boolean;
 
-    static USE_MOM: boolean;
-    static USE_DAD: boolean;
-    static USE_FU: boolean;
+    static ANSWERS: Answers;
 
     static USE_NAMES_IN_PROMPT: boolean;
 
@@ -31,6 +31,7 @@ export class Environment {
 
     static GEMINI_API_KEY?: string;
     static GEMINI_MODEL: string;
+    static GEMINI_IMAGE_MODEL: string;
 
     static MISTRAL_API_KEY?: string;
     static MISTRAL_MODEL: string;
@@ -38,6 +39,7 @@ export class Environment {
     static waitText = "⏳ Дайте-ка подумать...";
     static analyzingPictureText = "🔍 Внимательно изучаю изображение...";
     static analyzingPicturesText = "🔍 Внимательно изучаю изображения...";
+    static genImageText = "👨‍🎨 Генерирую изображение...";
     static ollamaCancelledText = "```Ollama\n❌ Отменено```";
 
     static load() {
@@ -52,10 +54,6 @@ export class Environment {
 
         Environment.ONLY_FOR_CREATOR_MODE = process.env.ONLY_FOR_CREATOR_MODE == "true";
 
-        Environment.USE_MOM = process.env.USE_MOM == "true";
-        Environment.USE_DAD = process.env.USE_DAD == "true";
-        Environment.USE_FU = process.env.USE_FU == "true";
-
         Environment.USE_NAMES_IN_PROMPT = process.env.USE_NAMES_IN_PROMPT == "true";
 
         Environment.MAX_PHOTO_SIZE = Number(process.env.MAX_PHOTO_SIZE || "1280");
@@ -68,6 +66,7 @@ export class Environment {
 
         Environment.GEMINI_API_KEY = process.env.GEMINI_API_KEY;
         Environment.GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+        Environment.GEMINI_IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 
         Environment.MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
         Environment.MISTRAL_MODEL = process.env.MISTRAL_MODEL || "mistral-small-latest";
@@ -95,6 +94,29 @@ export class Environment {
         }
 
         return has;
+    }
+
+    static setMuted(muted: Set<number>) {
+        this.MUTED_IDS = muted;
+    }
+
+    static async addMute(id: number): Promise<boolean> {
+        if (this.MUTED_IDS.has(id)) return Promise.resolve(false);
+
+        this.MUTED_IDS.add(id);
+        await saveData();
+        return Promise.resolve(true);
+    }
+
+    static async removeMute(id: number): Promise<boolean> {
+        if (!this.MUTED_IDS.has(id)) return Promise.resolve(false);
+        this.MUTED_IDS.delete(id);
+        await saveData();
+        return Promise.resolve(true);
+    }
+
+    static setAnswers(answers: Answers) {
+        this.ANSWERS = answers;
     }
 
     static setOllamaModel(newModel: string) {

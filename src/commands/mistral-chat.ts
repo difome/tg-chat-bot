@@ -7,6 +7,7 @@ import {
     escapeMarkdownV2Text,
     logError,
     oldReplyToMessage,
+    photoPathByUniqueId,
     startIntervalEditor
 } from "../util/utils";
 import {Environment} from "../common/environment";
@@ -33,7 +34,8 @@ export class MistralChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        const messageParts = await collectReplyChainText(msg);
+        const storedMsg = await MessageStore.get(chatId, msg.message_id);
+        const messageParts = await collectReplyChainText(storedMsg);
         console.log("MESSAGE PARTS", messageParts);
 
         const chatMessages = messageParts.map(part => {
@@ -43,8 +45,8 @@ export class MistralChat extends ChatCommand {
                 text: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + part.content,
             });
 
-            if (part.images && part.images.length > 0) {
-                const base64Image = Buffer.from(fs.readFileSync(part.images[0])).toString("base64");
+            for (const image of part.images) {
+                const base64Image = Buffer.from(fs.readFileSync(photoPathByUniqueId(image))).toString("base64");
                 content.push({
                     type: "image_url",
                     imageUrl: "data:image/jpeg;base64," + base64Image

@@ -1,7 +1,7 @@
 import {ChatCommand} from "../base/chat-command";
 import {logError, oldSendMessage, randomValue} from "../util/utils";
-import {betterAnswers} from "../db/database";
 import {Message} from "typescript-telegram-bot-api";
+import {Environment} from "../common/environment";
 
 export class WhatBetter extends ChatCommand {
     command = ["what", "что"];
@@ -19,7 +19,7 @@ export class WhatBetter extends ChatCommand {
         const a = m[2].trim();
         const b = m[4].trim();
 
-        const text = `${randomValue(betterAnswers)} ${randomValue([a, b])}`;
+        const text = `${randomValue(Environment.ANSWERS.better)} ${randomValue([a, b])}`;
 
         await oldSendMessage(msg, text).catch(logError);
     }

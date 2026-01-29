@@ -1,10 +1,10 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {logError, randomValue, oldReplyToMessage} from "../util/utils";
-import {prefixAnswers} from "../db/database";
+import {logError, randomValue, replyToMessage} from "../util/utils";
+import {Environment} from "../common/environment";
 
 export class PrefixResponse extends ChatCommand {
     async execute(msg: Message): Promise<void> {
-        await oldReplyToMessage(msg, randomValue(prefixAnswers)).catch(logError);
+        await replyToMessage({message: msg, text: randomValue(Environment.ANSWERS.prefix)}).catch(logError);
     }
 }

@@ -14,7 +14,7 @@ export class MessageStore {
         return this.map;
     }
 
-    static async put(m: Message | StoredMessage) {
+    static async put(m: Message | StoredMessage): Promise<StoredMessage> {
         const msg: StoredMessage = isStoredMessage(m) ? m : {
             chatId: m.chat.id,
             id: m.message_id,
@@ -26,6 +26,7 @@ export class MessageStore {
 
         this.map.set(this.key(msg.chatId, msg.id), msg);
         await messageDao.insert(messageDao.mapStoredTo([msg]));
+        return msg;
     }
 
     static async get(chatId: number, messageId: number): Promise<StoredMessage | null> {

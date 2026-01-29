@@ -1,4 +1,3 @@
-import {removeMute} from "../db/database";
 import {ChatCommand} from "../base/chat-command";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
@@ -34,7 +33,7 @@ export class Unignore extends ChatCommand {
             return;
         }
 
-        if (await removeMute(id)) {
+        if (await Environment.removeMute(id)) {
             await oldSendMessage(msg, text + " больше не в муте! 🔈").catch(logError);
         } else {
             await oldSendMessage(msg, text + " не был в муте 🤔").catch(logError);

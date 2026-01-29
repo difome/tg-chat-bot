@@ -3,6 +3,7 @@ import {Message} from "typescript-telegram-bot-api";
 import {boolToEmoji, logError, replyToMessage} from "../util/utils";
 import {Environment} from "../common/environment";
 import {ollama} from "../index";
+import {ShowResponse} from "ollama";
 
 export class OllamaGetModel extends ChatCommand {
     title = "/ollamaGetModel";
@@ -10,7 +11,7 @@ export class OllamaGetModel extends ChatCommand {
 
     async execute(msg: Message): Promise<void> {
         try {
-            const showResponse = await ollama.show({model: Environment.OLLAMA_MODEL});
+            const showResponse = await this.loadModelInfo();
 
             const caps = showResponse.capabilities;
 
@@ -26,5 +27,9 @@ export class OllamaGetModel extends ChatCommand {
             logError(e);
             await replyToMessage({message: msg, text: e.toString()}).catch(logError);
         }
+    }
+
+    async loadModelInfo(): Promise<ShowResponse | null> {
+        return ollama.show({model: Environment.OLLAMA_MODEL});
     }
 }

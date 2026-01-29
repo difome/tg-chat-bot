@@ -3,15 +3,11 @@ import {Environment} from "./common/environment";
 import {InlineQueryResult, TelegramBot, User} from "typescript-telegram-bot-api";
 import {ChatCommand} from "./base/chat-command";
 import {
-    checkRequirements,
-    executeChatCommand,
     extractTextMessage,
     findAndExecuteCallbackCommand,
-    ignore,
     initSystemSpecs,
     logError,
-    randomValue,
-    searchChatCommand
+    processNewMessage
 } from "./util/utils";
 import {Ae} from "./commands/ae";
 import {Help} from "./commands/help";
@@ -21,7 +17,7 @@ import {Ping} from "./commands/ping";
 import {RandomString} from "./commands/random-string";
 import {SystemInfo} from "./commands/system-info";
 import {Test} from "./commands/test";
-import {inviteAnswers, kickAnswers, muted, readData, retrieveAnswers} from "./db/database";
+import {readData, retrieveAnswers} from "./db/database";
 import {Uptime} from "./commands/uptime";
 import {WhatBetter} from "./commands/what-better";
 import {When} from "./commands/when";
@@ -40,7 +36,6 @@ import {Leave} from "./commands/leave";
 import {OllamaChat} from "./commands/ollama-chat";
 import {Start} from "./commands/start";
 import {MessageStore} from "./common/message-store";
-import {PrefixResponse} from "./commands/prefix-response";
 import {GeminiChat} from "./commands/gemini-chat";
 import {Choice} from "./commands/choice";
 import {Coin} from "./commands/coin";
@@ -70,6 +65,7 @@ import {GeminiListModels} from "./commands/gemini-list-models";
 import {GeminiGetModel} from "./commands/gemini-get-model";
 import {GeminiSetModel} from "./commands/gemini-set-model";
 import {Debug} from "./commands/debug";
+import {GeminiGenerateImage} from "./commands/gemini-generate-image";
 
 process.setUncaughtExceptionCaptureCallback(logError);
 
@@ -177,7 +173,8 @@ if (Environment.GEMINI_API_KEY) {
         new GeminiChat(),
         new GeminiListModels(),
         new GeminiGetModel(),
-        new GeminiSetModel()
+        new GeminiSetModel(),
+        new GeminiGenerateImage()
     );
 }
 
@@ -239,57 +236,7 @@ bot.on("edited_message", async (msg) => {
     await MessageStore.put(msg);
 });
 
-bot.on("message", async (msg) => {
-    console.log("message", msg);
-
-    Promise.all([MessageStore.put(msg), UserStore.put(msg.from)]).then(ignore);
-
-    if ((msg.new_chat_members?.length || 0 > 0)) {
-        await bot.sendMessage({chat_id: msg.chat.id, text: randomValue(inviteAnswers)}).catch(logError);
-        return;
-    }
-
-    if (msg.left_chat_member && msg.left_chat_member.id !== botUser.id) {
-        await bot.sendMessage({chat_id: msg.chat.id, text: randomValue(kickAnswers)}).catch(logError);
-        return;
-    }
-
-    if (muted.has(msg.from.id)) return;
-
-    if (msg.forward_origin) return;
-
-    const cmdText = msg.text || msg.caption || "";
-
-    const then = Date.now();
-
-    const cmd = searchChatCommand(chatCommands, cmdText);
-    const executed = await executeChatCommand(cmd, msg, cmdText);
-
-    const now = Date.now();
-    const diff = now - then;
-    console.log("diff", diff);
-
-    if (executed || !cmdText) return;
-
-    const startsWithPrefix = cmdText.toLowerCase().startsWith(Environment.BOT_PREFIX.toLowerCase());
-    const messageWithoutPrefix = cmdText.substring(Environment.BOT_PREFIX.length).trim();
-
-    if (startsWithPrefix && messageWithoutPrefix.length === 0) {
-        const prefixResponse = new PrefixResponse();
-        if (await checkRequirements(prefixResponse, msg)) {
-            await prefixResponse.execute(msg);
-        }
-        return;
-    }
-
-    if (!startsWithPrefix && msg.chat.type !== "private") return;
-    if (msg.chat.type === "private" && !Environment.ADMIN_IDS.has(msg.chat.id)) return;
-
-    const chat = chatCommands.find(e => e instanceof OllamaChat);
-    if (await checkRequirements(chat, msg)) {
-        await chat.executeOllama(msg, startsWithPrefix ? messageWithoutPrefix : cmdText);
-    }
-});
+bot.on("message", processNewMessage);
 
 bot.on("inline_query", async (query) => {
     console.log("query", query);

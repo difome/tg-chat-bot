@@ -12,7 +12,7 @@ import {
 } from "typescript-telegram-bot-api";
 import {Environment} from "../common/environment";
 import {TelegramError} from "typescript-telegram-bot-api/dist/errors";
-import {bot, botUser, messageDao} from "../index";
+import {bot, botUser, chatCommands, messageDao} from "../index";
 import os from "os";
 import axios from "axios";
 import {MessagePart} from "../common/message-part";
@@ -25,6 +25,8 @@ import fs from "node:fs";
 import path from "node:path";
 import {MessageStore} from "../common/message-store";
 import {SystemInfo} from "../commands/system-info";
+import {PrefixResponse} from "../commands/prefix-response";
+import {OllamaChat} from "../commands/ollama-chat";
 
 export const ignore = () => {
 };
@@ -525,7 +527,35 @@ export async function loadImagesIfExists(msg: Message | StoredMessage): Promise<
     return imageFilePaths;
 }
 
-export async function collectReplyChainText(triggerMsg: Message, limit: number = 40, includeTrigger = true, cutPrefix: boolean = true): Promise<MessagePart[]> {
+export async function loadImagesFromFileIds(maxSizes: PhotoMaxSize[]): Promise<string[] | null> {
+    if (!maxSizes?.length) return null;
+
+    const dataPath = path.join(Environment.DATA_PATH, "temp");
+    if (!fs.existsSync(dataPath)) {
+        fs.mkdirSync(dataPath);
+    }
+
+    const imagePromises = maxSizes.map((size) => {
+        return axios.get<ArrayBuffer>(size.url, {responseType: "arraybuffer"});
+    });
+
+    const responses = await Promise.all(imagePromises);
+    const paths = responses.map((res, index) => {
+        try {
+            const imageFilePath = path.join(dataPath, maxSizes[index].unique_file_id + ".jpg");
+            const src = Buffer.from(res.data);
+            fs.writeFileSync(imageFilePath, src);
+            return imageFilePath;
+        } catch (e) {
+            logError(e);
+            return null;
+        }
+    });
+
+    return paths.filter(p => p);
+}
+
+export async function collectReplyChainText(triggerMsg: Message | StoredMessage, limit: number = 40, includeTrigger = true, cutPrefix: boolean = true): Promise<MessagePart[]> {
     const parts: MessagePart[] = [];
 
     const pushPart = async (msg: Message | StoredMessage, textRequired: boolean = false) => {
@@ -548,19 +578,21 @@ export async function collectReplyChainText(triggerMsg: Message, limit: number =
         });
     };
 
-    const chatId = triggerMsg.chat.id as number;
+    const chatId = isStoredMessage(triggerMsg) ? triggerMsg.chatId as number : triggerMsg.chat.id;
 
     if (includeTrigger) {
         await pushPart(triggerMsg);
     }
 
-    const first = triggerMsg.reply_to_message;
+    const first = isStoredMessage(triggerMsg) ?
+        (await MessageStore.get(chatId, triggerMsg.replyToMessageId)) :
+        triggerMsg.reply_to_message;
     if (!first) {
         return parts;
     }
     await pushPart(first, false);
 
-    let curId = first.message_id;
+    let curId = isStoredMessage(first) ? first.id : first.message_id;
 
     while (parts.length < limit) {
         const cur = await messageDao.getById({chatId: chatId, id: curId});
@@ -898,7 +930,7 @@ export function getRuntimeInfo(): RuntimeInfo {
     return {runtime: "unknown", version: String((process as any).version ?? "")};
 }
 
-export type PhotoMaxSize = { width: number, height: number, url: string; unique_file_id: string; };
+export type PhotoMaxSize = { width: number, height: number, url: string; file_id: string; unique_file_id: string; };
 
 export async function getPhotoMaxSize(photos: PhotoSize[], target: number = Environment.MAX_PHOTO_SIZE): Promise<PhotoMaxSize | null> {
     if (!photos) return null;
@@ -927,6 +959,7 @@ export async function mapPhotoSizeToMax(size: PhotoSize): Promise<PhotoMaxSize |
         width: size.width,
         height: size.height,
         url: await getFileUrl(size.file_id),
+        file_id: size.file_id,
         unique_file_id: size.file_unique_id
     };
 }
@@ -952,4 +985,112 @@ export function ifTrue(exp?: never): boolean {
 
 export function boolToEmoji(bool: boolean): string {
     return bool ? "✅" : "❌";
+}
+
+export const albumCache = new Map<string, { messages: Message[], timer: NodeJS.Timeout }>();
+
+export async function processNewMessage(msg: Message) {
+    console.log("message", msg);
+
+    let storedMsg: StoredMessage | null = null;
+    Promise.all([
+            MessageStore.put(msg).then(r => {
+                storedMsg = r;
+                console.log("storedMsg", storedMsg);
+            }),
+            UserStore.put(msg.from)
+        ]
+    ).catch(logError);
+
+    if ((msg.new_chat_members?.length || 0 > 0)) {
+        await bot.sendMessage({chat_id: msg.chat.id, text: randomValue(Environment.ANSWERS.invite)}).catch(logError);
+        return;
+    }
+
+    if (msg.left_chat_member && msg.left_chat_member.id !== botUser.id) {
+        await bot.sendMessage({chat_id: msg.chat.id, text: randomValue(Environment.ANSWERS.kick)}).catch(logError);
+        return;
+    }
+
+    if (Environment.MUTED_IDS.has(msg.from.id)) return;
+
+    if (msg.forward_origin) return;
+
+    const groupId = msg.media_group_id;
+    if (groupId) {
+        await new Promise<true>(resolve => {
+            if (!albumCache.has(groupId)) {
+                albumCache.set(groupId, {
+                    messages: [msg],
+                    timer: setTimeout(async () => {
+                        const photos = await processAlbum(groupId);
+                        console.log("processedAlbum", photos);
+
+                        storedMsg.photoMaxSizeFilePath = photos;
+                        await MessageStore.put(storedMsg).catch(logError);
+                        resolve(true);
+                    }, 1000)
+                });
+            } else {
+                const entry = albumCache.get(groupId);
+                entry.messages.push(msg);
+            }
+        });
+    }
+
+    const cmdText = msg.text || msg.caption || "";
+
+    const then = Date.now();
+
+    const cmd = searchChatCommand(chatCommands, cmdText);
+    const executed = await executeChatCommand(cmd, msg, cmdText);
+
+    const now = Date.now();
+    const diff = now - then;
+    console.log("diff", diff);
+
+    if (executed || !cmdText) return;
+
+    const startsWithPrefix = cmdText.toLowerCase().startsWith(Environment.BOT_PREFIX.toLowerCase());
+    const messageWithoutPrefix = cmdText.substring(Environment.BOT_PREFIX.length).trim();
+
+    if (startsWithPrefix && messageWithoutPrefix.length === 0) {
+        const prefixResponse = new PrefixResponse();
+        if (await checkRequirements(prefixResponse, msg)) {
+            await prefixResponse.execute(msg);
+        }
+        return;
+    }
+
+    if (!startsWithPrefix && msg.chat.type !== "private") return;
+    if (msg.chat.type === "private" && !Environment.ADMIN_IDS.has(msg.chat.id)) return;
+
+    const chat = chatCommands.find(e => e instanceof OllamaChat);
+    if (await checkRequirements(chat, msg)) {
+        await chat.executeOllama(msg, startsWithPrefix ? messageWithoutPrefix : cmdText);
+    }
+}
+
+async function processAlbum(groupId: string): Promise<string[]> {
+    const entry = albumCache.get(groupId);
+    if (!entry) return;
+
+    const allPhotos = entry.messages
+        .filter(m => m.photo)
+        .map(m => m.photo);
+
+    const allPhotoMaxSizes = await Promise.all(allPhotos.map(photo => getPhotoMaxSize(photo)));
+    const ids = allPhotoMaxSizes.map(p => p.unique_file_id);
+
+    await loadImagesFromFileIds(allPhotoMaxSizes);
+
+    console.log(`Received album ${groupId} with ${ids.length} photos.`);
+    console.log("File IDs:", ids);
+
+    albumCache.delete(groupId);
+    return ids;
+}
+
+export function photoPathByUniqueId(uniqueId: string): string {
+    return path.join(Environment.DATA_PATH, "temp", uniqueId + ".jpg");
 }

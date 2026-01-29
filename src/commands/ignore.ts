@@ -1,4 +1,3 @@
-import {addMute} from "../db/database";
 import {ChatCommand} from "../base/chat-command";
 import {Requirements} from "../base/requirements";
 import {Requirement} from "../base/requirement";
@@ -35,7 +34,7 @@ export class Ignore extends ChatCommand {
             return;
         }
 
-        if (await addMute(id)) {
+        if (await Environment.addMute(id)) {
             await oldSendMessage(msg, text + " в муте! 🔇").catch(logError);
         } else {
             await oldSendMessage(msg, text + " уже в муте 🤔").catch(logError);

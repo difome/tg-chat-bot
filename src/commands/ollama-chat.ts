@@ -1,17 +1,19 @@
 import {ChatCommand} from "../base/chat-command";
 import {Message} from "typescript-telegram-bot-api";
-import {abortOllamaRequest, bot, getOllamaRequest, ollama, ollamaRequests} from "../index";
+import {abortOllamaRequest, bot, chatCommands, getOllamaRequest, ollama, ollamaRequests} from "../index";
 import {
     collectReplyChainText,
     escapeMarkdownV2Text,
     logError,
     oldReplyToMessage,
+    replyToMessage,
     startIntervalEditor
 } from "../util/utils";
 import {Environment} from "../common/environment";
 import {MessageStore} from "../common/message-store";
 import {Cancel} from "../callback_commands/cancel";
 import {OllamaCancel} from "../callback_commands/ollama-cancel";
+import {OllamaGetModel} from "./ollama-get-model";
 
 export class OllamaChat extends ChatCommand {
     command = "ollama";
@@ -30,7 +32,8 @@ export class OllamaChat extends ChatCommand {
 
         const chatId = msg.chat.id;
 
-        const messageParts = await collectReplyChainText(msg);
+        const storedMsg = await MessageStore.get(chatId, msg.message_id);
+        const messageParts = await collectReplyChainText(storedMsg);
         console.log("MESSAGE PARTS", messageParts);
 
         const chatMessages = messageParts.map(part => {
@@ -52,19 +55,32 @@ export class OllamaChat extends ChatCommand {
                 return total + (curr.images?.length ?? 0);
             }, 0);
 
+            if (imagesCount) {
+                try {
+                    const modelInfo = await chatCommands.find(c => c instanceof OllamaGetModel).loadModelInfo();
+                    if (modelInfo) {
+                        const caps = modelInfo.capabilities || [];
+                        if (!caps.includes("vision")) {
+                            await replyToMessage({
+                                message: msg,
+                                text: "Моя текущая модель не умеет анализировать изображения 🥹"
+                            });
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    logError(e);
+                }
+            }
+
             const uuid = crypto.randomUUID();
             const cancelMarkup = {inline_keyboard: [[Cancel.withData(new OllamaCancel().data + " " + uuid).asButton()]]};
 
-            waitMessage = await bot.sendMessage({
-                chat_id: chatId,
+            waitMessage = await replyToMessage({
+                message: msg,
                 text: imagesCount ?
                     imagesCount > 1 ? Environment.analyzingPicturesText : Environment.analyzingPictureText
-                    : Environment.waitText,
-
-                reply_parameters: {
-                    chat_id: chatId,
-                    message_id: msg.message_id
-                }
+                    : Environment.waitText
             });
 
             const stream = await ollama.chat({
