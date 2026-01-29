@@ -1,6 +1,6 @@
 import {StoredMessage} from "../model/stored-message";
 import {Message} from "typescript-telegram-bot-api";
-import {extractTextMessage, isStoredMessage} from "../util/utils";
+import {extractTextMessage, getPhotoMaxSize, isStoredMessage} from "../util/utils";
 import {messageDao} from "../index";
 
 export class MessageStore {
@@ -22,6 +22,7 @@ export class MessageStore {
             fromId: m.from.id,
             text: extractTextMessage(m),
             date: m.date ?? 0,
+            photoMaxSizeFilePath: m.photo ? [getPhotoMaxSize(m.photo).file_unique_id] : null
         };
 
         this.map.set(this.key(msg.chatId, msg.id), msg);

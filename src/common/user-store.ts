@@ -9,7 +9,7 @@ export class UserStore {
         return this.map;
     }
 
-    static async put(u: User) {
+    static async put(u: User): Promise<StoredUser> {
         const user: StoredUser = {
             id: u.id,
             isBot: u.is_bot,
@@ -22,6 +22,7 @@ export class UserStore {
         this.map.set(u.id, user);
 
         await userDao.insert(userDao.mapTo([u]));
+        return user;
     }
 
     static async get(id: number): Promise<StoredUser | null> {

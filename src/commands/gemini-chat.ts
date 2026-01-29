@@ -13,7 +13,6 @@ import {
     oldReplyToMessage,
     startIntervalEditor
 } from "../util/utils";
-import fs from "node:fs";
 
 export class GeminiChat extends ChatCommand {
     command = "gemini";
@@ -66,10 +65,9 @@ export class GeminiChat extends ChatCommand {
             const images = messageParts[0].images;
 
             images.forEach(image => {
-                const base64Image = Buffer.from(fs.readFileSync(image)).toString("base64");
                 input.push({
                     type: "image",
-                    data: base64Image,
+                    data: image,
                     mime_type: "image/png"
                 });
             });

@@ -7,13 +7,11 @@ import {
     escapeMarkdownV2Text,
     logError,
     oldReplyToMessage,
-    photoPathByUniqueId,
     startIntervalEditor
 } from "../util/utils";
 import {Environment} from "../common/environment";
 import {bot, mistralAi} from "../index";
 import {MessageStore} from "../common/message-store";
-import fs from "node:fs";
 
 export class MistralChat extends ChatCommand {
     command = "mistral";
@@ -46,10 +44,9 @@ export class MistralChat extends ChatCommand {
             });
 
             for (const image of part.images) {
-                const base64Image = Buffer.from(fs.readFileSync(photoPathByUniqueId(image))).toString("base64");
                 content.push({
                     type: "image_url",
-                    imageUrl: "data:image/jpeg;base64," + base64Image
+                    imageUrl: "data:image/jpeg;base64," + image
                 });
             }
 

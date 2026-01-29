@@ -497,9 +497,18 @@ export async function loadImagesIfExists(msg: Message | StoredMessage): Promise<
         return msg.photoMaxSizeFilePath;
     }
 
+    if (!msg.photo?.length) return;
+
     const imageFilePaths: string[] = [];
 
-    const maxSize = await getPhotoMaxSize(msg.photo);
+    for (const size of msg.photo) {
+        const exists = fs.existsSync(photoPathByUniqueId(size.file_unique_id));
+        if (exists) {
+            return [size.file_unique_id];
+        }
+    }
+
+    const maxSize = await mapPhotoSizeToMax(getPhotoMaxSize(msg.photo));
     if (maxSize) {
         const imagePath = path.join(Environment.DATA_PATH, "temp");
         if (!fs.existsSync(imagePath)) {
@@ -527,13 +536,22 @@ export async function loadImagesIfExists(msg: Message | StoredMessage): Promise<
     return imageFilePaths;
 }
 
-export async function loadImagesFromFileIds(maxSizes: PhotoMaxSize[]): Promise<string[] | null> {
-    if (!maxSizes?.length) return null;
+export async function loadImagesFromFileIds(sizes: PhotoSize[]): Promise<string[] | null> {
+    if (!sizes?.length) return null;
 
     const dataPath = path.join(Environment.DATA_PATH, "temp");
     if (!fs.existsSync(dataPath)) {
         fs.mkdirSync(dataPath);
     }
+
+    const existing =
+        sizes.filter(s => fs.existsSync(photoPathByUniqueId(s.file_unique_id)))
+            .map(s => s.file_unique_id);
+
+    const promises = sizes.filter(s => !fs.existsSync(photoPathByUniqueId(s.file_unique_id)))
+        .map(s => mapPhotoSizeToMax(s));
+
+    const maxSizes = await Promise.all(promises);
 
     const imagePromises = maxSizes.map((size) => {
         return axios.get<ArrayBuffer>(size.url, {responseType: "arraybuffer"});
@@ -542,17 +560,19 @@ export async function loadImagesFromFileIds(maxSizes: PhotoMaxSize[]): Promise<s
     const responses = await Promise.all(imagePromises);
     const paths = responses.map((res, index) => {
         try {
-            const imageFilePath = path.join(dataPath, maxSizes[index].unique_file_id + ".jpg");
+            const uniqueFileId = maxSizes[index].unique_file_id;
+            const imageFilePath = path.join(dataPath, uniqueFileId + ".jpg");
             const src = Buffer.from(res.data);
             fs.writeFileSync(imageFilePath, src);
-            return imageFilePath;
+            return uniqueFileId;
         } catch (e) {
             logError(e);
             return null;
         }
     });
-
-    return paths.filter(p => p);
+    const finalPaths = paths.filter(p => p);
+    finalPaths.unshift(...existing);
+    return finalPaths;
 }
 
 export async function collectReplyChainText(triggerMsg: Message | StoredMessage, limit: number = 40, includeTrigger = true, cutPrefix: boolean = true): Promise<MessagePart[]> {
@@ -561,14 +581,19 @@ export async function collectReplyChainText(triggerMsg: Message | StoredMessage,
     const pushPart = async (msg: Message | StoredMessage, textRequired: boolean = false) => {
         const rawText = extractTextMessage(msg);
         const cleanText = cutPrefix ? cutPrefixes(rawText) : rawText;
-        const images = await loadImagesIfExists(msg);
+        const imageNames = await loadImagesIfExists(msg);
 
         if (!cleanText && textRequired) return;
-        if (!cleanText && !images?.length) return;
+        if (!cleanText && !imageNames?.length) return;
 
         const fromId = isStoredMessage(msg) ? msg.fromId : msg.from.id;
         const firstName = isStoredMessage(msg) ?
             (await UserStore.get(msg.fromId))?.firstName : msg.from.first_name;
+
+        const images = imageNames ? imageNames.map(n => {
+            const filePath = photoPathByUniqueId(n);
+            return Buffer.from(fs.readFileSync(filePath)).toString("base64");
+        }) : null;
 
         parts.push({
             bot: fromId === botUser.id,
@@ -932,7 +957,7 @@ export function getRuntimeInfo(): RuntimeInfo {
 
 export type PhotoMaxSize = { width: number, height: number, url: string; file_id: string; unique_file_id: string; };
 
-export async function getPhotoMaxSize(photos: PhotoSize[], target: number = Environment.MAX_PHOTO_SIZE): Promise<PhotoMaxSize | null> {
+export function getPhotoMaxSize(photos: PhotoSize[], target: number = Environment.MAX_PHOTO_SIZE): PhotoSize | null {
     if (!photos) return null;
 
     photos = photos.filter(p => Math.max(p.width, p.height) <= target);
@@ -940,7 +965,7 @@ export async function getPhotoMaxSize(photos: PhotoSize[], target: number = Envi
     if (photos.length === 0) return null;
 
     if (photos.length === 1) {
-        return mapPhotoSizeToMax(photos[0]);
+        return photos[0];
     }
 
     const max = photos.reduce((prev, cur) => {
@@ -949,8 +974,7 @@ export async function getPhotoMaxSize(photos: PhotoSize[], target: number = Envi
         return cur.width * cur.height > prev.width * prev.height ? cur : prev;
     }, null);
 
-    if (!max) return null;
-    return mapPhotoSizeToMax(max);
+    return max;
 }
 
 export async function mapPhotoSizeToMax(size: PhotoSize): Promise<PhotoMaxSize | null> {
@@ -993,14 +1017,21 @@ export async function processNewMessage(msg: Message) {
     console.log("message", msg);
 
     let storedMsg: StoredMessage | null = null;
-    Promise.all([
-            MessageStore.put(msg).then(r => {
-                storedMsg = r;
-                console.log("storedMsg", storedMsg);
-            }),
-            UserStore.put(msg.from)
-        ]
-    ).catch(logError);
+
+    try {
+        const results = await Promise.all([
+                MessageStore.put(msg),
+                UserStore.put(msg.from)
+            ]
+        );
+
+        storedMsg = results[0];
+        if (!msg.media_group_id && storedMsg.photoMaxSizeFilePath) {
+            await loadImagesIfExists(msg);
+        }
+    } catch (e) {
+        logError(e);
+    }
 
     if ((msg.new_chat_members?.length || 0 > 0)) {
         await bot.sendMessage({chat_id: msg.chat.id, text: randomValue(Environment.ANSWERS.invite)}).catch(logError);
@@ -1080,9 +1111,7 @@ async function processAlbum(groupId: string): Promise<string[]> {
         .map(m => m.photo);
 
     const allPhotoMaxSizes = await Promise.all(allPhotos.map(photo => getPhotoMaxSize(photo)));
-    const ids = allPhotoMaxSizes.map(p => p.unique_file_id);
-
-    await loadImagesFromFileIds(allPhotoMaxSizes);
+    const ids = await loadImagesFromFileIds(allPhotoMaxSizes);
 
     console.log(`Received album ${groupId} with ${ids.length} photos.`);
     console.log("File IDs:", ids);
