@@ -1,14 +1,16 @@
 import "dotenv/config";
 import {Environment} from "./common/environment";
-import {InlineQueryResult, TelegramBot, User} from "typescript-telegram-bot-api";
+import {TelegramBot, User} from "typescript-telegram-bot-api";
 import {Command} from "./base/command";
 import {
     delay,
-    extractTextMessage,
-    findAndExecuteCallbackCommand,
     ignore,
     initSystemSpecs,
     logError,
+    processCallbackQuery,
+    processEditedMessage,
+    processInlineQuery,
+    processMyChatMember,
     processNewMessage
 } from "./util/utils";
 import {Ae} from "./commands/ae";
@@ -27,7 +29,6 @@ import {RandomInt} from "./commands/random-int";
 import {Ban} from "./commands/ban";
 import {Quote} from "./commands/quote";
 import {Ollama} from "ollama";
-import {WebSearchResponse} from "./model/web-search-response";
 import {OllamaSearch} from "./commands/ollama-search";
 import {Id} from "./commands/id";
 import {OllamaPrompt} from "./commands/ollama-prompt";
@@ -37,7 +38,6 @@ import {Shutdown} from "./commands/shutdown";
 import {Leave} from "./commands/leave";
 import {OllamaChat} from "./commands/ollama-chat";
 import {Start} from "./commands/start";
-import {MessageStore} from "./common/message-store";
 import {GeminiChat} from "./commands/gemini-chat";
 import {Choice} from "./commands/choice";
 import {Coin} from "./commands/coin";
@@ -221,7 +221,8 @@ async function main() {
         `TEST_ENVIRONMENT: ${Environment.TEST_ENVIRONMENT}\n` +
         `DATA_PATH: ${Environment.DATA_PATH}\n` +
         `MAX_PHOTO_SIZE: ${Environment.MAX_PHOTO_SIZE}\n` +
-        `ONLY_FOR_CREATOR: ${Environment.ONLY_FOR_CREATOR_MODE}`
+        `ONLY_FOR_CREATOR: ${Environment.ONLY_FOR_CREATOR_MODE}\n` +
+        `DEFAULT_AI_PROVIDER: ${Environment.DEFAULT_AI_PROVIDER}`
     );
 
     fs.mkdir(photoDir, ignore);
@@ -272,74 +273,10 @@ async function main() {
     }
 }
 
-bot.on("my_chat_member", async (u) => {
-    console.log("my_chat_member", u);
-});
-
-bot.on("edited_message", async (msg) => {
-    console.log("edited_message", msg);
-
-    await UserStore.put(msg.from);
-
-    if (!extractTextMessage(msg) || msg.from.id === botUser.id) return;
-
-    await MessageStore.put(msg);
-});
-
+bot.on("my_chat_member", processMyChatMember);
+bot.on("edited_message", processEditedMessage);
 bot.on("message", processNewMessage);
-
-bot.on("inline_query", async (query) => {
-    console.log("query", query);
-
-    if (Environment.CREATOR_ID !== query.from.id) {
-        await bot.answerInlineQuery({
-            inline_query_id: query.id,
-            results: [],
-            button: {
-                text: "No access",
-                start_parameter: "nope"
-            }
-        }).catch(logError);
-        return;
-    }
-
-    if (query.query.trim().length !== 0) {
-        try {
-            const queryResults: InlineQueryResult[] = [];
-            const results = await ollama.webSearch({query: query.query});
-
-            console.log("results", results);
-
-            results.results.forEach((result, i) => {
-                const r = result as WebSearchResponse;
-                queryResults.push({
-                    type: "article",
-                    id: `${i}`,
-                    title: `${r.title}`,
-                    input_message_content: {
-                        message_text: `${r.title}\n\n${r.url}`
-                    }
-                });
-            });
-
-            await bot.answerInlineQuery({
-                inline_query_id: query.id,
-                results: queryResults,
-            });
-        } catch (e) {
-            logError(e);
-        }
-    } else {
-        await bot.answerInlineQuery({
-            inline_query_id: query.id,
-            results: [],
-        }).catch(logError);
-    }
-});
-
-bot.on("callback_query", async (query) => {
-    console.log(query);
-    await findAndExecuteCallbackCommand(callbackCommands, query);
-});
+bot.on("inline_query", processInlineQuery);
+bot.on("callback_query", processCallbackQuery);
 
 main().catch(logError);

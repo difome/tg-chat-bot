@@ -17,10 +17,10 @@ export class MistralChat extends ChatCommand {
     command = "mistral";
     argsMode = "required" as const;
 
+    requirements = Requirements.Build(Requirement.BOT_CREATOR);
+
     title = "/mistral";
     description = "Chat with AI (Mistral)";
-
-    requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         console.log("match", match);

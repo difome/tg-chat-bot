@@ -133,8 +133,6 @@ export class OpenAIChat extends ChatCommand {
                             break;
                         }
                     }
-
-
                 }
             } finally {
                 await editor.tick();

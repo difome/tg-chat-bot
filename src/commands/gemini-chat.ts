@@ -18,10 +18,10 @@ export class GeminiChat extends ChatCommand {
     command = "gemini";
     argsMode = "required" as const;
 
+    requirements = Requirements.Build(Requirement.BOT_CREATOR);
+
     title = "/gemini";
     description = "Chat with AI (Gemini)";
-
-    requirements = Requirements.Build(Requirement.BOT_CREATOR);
 
     async execute(msg: Message, match?: RegExpExecArray): Promise<void> {
         console.log("match", match);

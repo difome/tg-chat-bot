@@ -3,6 +3,13 @@ import {saveData} from "../db/database";
 import {Answers} from "../model/answers";
 import {ifTrue} from "../util/utils";
 
+export enum AiProvider {
+    OLLAMA = "OLLAMA",
+    GEMINI = "GEMINI",
+    MISTRAL = "MISTRAL",
+    OPENAI = "OPENAI",
+}
+
 export class Environment {
     static BOT_TOKEN: string;
     static TEST_ENVIRONMENT: boolean;
@@ -23,6 +30,8 @@ export class Environment {
     static USE_NAMES_IN_PROMPT: boolean;
 
     static MAX_PHOTO_SIZE: number;
+
+    static DEFAULT_AI_PROVIDER: AiProvider;
 
     static SYSTEM_PROMPT?: string;
 
@@ -64,6 +73,13 @@ export class Environment {
         Environment.USE_NAMES_IN_PROMPT = ifTrue(process.env.USE_NAMES_IN_PROMPT);
 
         Environment.MAX_PHOTO_SIZE = Number(process.env.MAX_PHOTO_SIZE || "1280");
+
+        const aiProvider = process.env.DEFAULT_AI_PROVIDER || "OLLAMA";
+        if (Object.values(AiProvider).includes(aiProvider as AiProvider)) {
+            Environment.DEFAULT_AI_PROVIDER = aiProvider as AiProvider;
+        } else {
+            Environment.DEFAULT_AI_PROVIDER = AiProvider.OLLAMA;
+        }
 
         Environment.SYSTEM_PROMPT = process.env.SYSTEM_PROMPT?.trim();
 

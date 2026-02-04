@@ -4,15 +4,18 @@ import {CallbackCommand} from "../base/callback-command";
 import {
     CallbackQuery,
     ChatMember,
+    ChatMemberUpdated,
     InlineKeyboardMarkup,
+    InlineQuery,
+    InlineQueryResult,
     Message,
     ParseMode,
     PhotoSize,
     User
 } from "typescript-telegram-bot-api";
-import {Environment} from "../common/environment";
+import {AiProvider, Environment} from "../common/environment";
 import {TelegramError} from "typescript-telegram-bot-api/dist/errors";
-import {bot, botUser, commands, messageDao} from "../index";
+import {bot, botUser, callbackCommands, commands, messageDao, ollama} from "../index";
 import os from "os";
 import axios from "axios";
 import {MessagePart} from "../common/message-part";
@@ -30,6 +33,10 @@ import {OllamaChat} from "../commands/ollama-chat";
 import {getYouTubeVideoId} from "./ytdl";
 import {YouTubeDownload} from "../commands/youtube-download";
 import {ChatCommand} from "../base/chat-command";
+import {WebSearchResponse} from "../model/web-search-response";
+import {GeminiChat} from "../commands/gemini-chat";
+import {MistralChat} from "../commands/mistral-chat";
+import {OpenAIChat} from "../commands/openai-chat";
 
 export const ignore = () => {
 };
@@ -1028,8 +1035,34 @@ export function boolToEmoji(bool: boolean): string {
 
 export const albumCache = new Map<string, { messages: Message[], timer: NodeJS.Timeout }>();
 
-export async function processNewMessage(msg: Message) {
-    console.log("message", msg);
+async function processAlbum(groupId: string): Promise<string[]> {
+    const entry = albumCache.get(groupId);
+    if (!entry) return;
+
+    const allPhotos = entry.messages
+        .filter(m => m.photo)
+        .map(m => m.photo);
+
+    const allPhotoMaxSizes = await Promise.all(allPhotos.map(photo => getPhotoMaxSize(photo)));
+    const ids = await loadImagesFromFileIds(allPhotoMaxSizes);
+
+    console.log(`Received album ${groupId} with ${ids.length} photos.`);
+    console.log("File IDs:", ids);
+
+    albumCache.delete(groupId);
+    return ids;
+}
+
+export function photoPathByUniqueId(uniqueId: string): string {
+    return path.join(Environment.DATA_PATH, "photo", uniqueId + ".jpg");
+}
+
+export async function processMyChatMember(u: ChatMemberUpdated): Promise<void> {
+    console.log("my_chat_member", u);
+}
+
+export async function processNewMessage(msg: Message): Promise<void> {
+    console.log("New Message", msg);
 
     let storedMsg: StoredMessage | null = null;
 
@@ -1133,30 +1166,86 @@ export async function processNewMessage(msg: Message) {
     if (!startsWithPrefix && msg.chat.type !== "private") return;
     if (msg.chat.type === "private" && !Environment.ADMIN_IDS.has(msg.chat.id)) return;
 
-    const chat = commands.find(e => e instanceof OllamaChat);
-    if (await checkRequirements(chat, msg)) {
-        await chat.executeOllama(msg, textToCheck);
+    switch (Environment.DEFAULT_AI_PROVIDER) {
+        case AiProvider.OLLAMA: {
+            await commands.find(e => e instanceof OllamaChat).executeOllama(msg, textToCheck);
+            break;
+        }
+        case AiProvider.GEMINI: {
+            await commands.find(e => e instanceof GeminiChat).executeGemini(msg, textToCheck);
+            break;
+        }
+        case AiProvider.MISTRAL: {
+            await commands.find(e => e instanceof MistralChat).executeMistral(msg, textToCheck);
+            break;
+        }
+        case AiProvider.OPENAI: {
+            await commands.find(e => e instanceof OpenAIChat).executeOpenAI(msg, textToCheck);
+            break;
+        }
     }
 }
 
-async function processAlbum(groupId: string): Promise<string[]> {
-    const entry = albumCache.get(groupId);
-    if (!entry) return;
+export async function processEditedMessage(msg: Message): Promise<void> {
+    console.log("Edited Message", msg);
 
-    const allPhotos = entry.messages
-        .filter(m => m.photo)
-        .map(m => m.photo);
+    await UserStore.put(msg.from);
 
-    const allPhotoMaxSizes = await Promise.all(allPhotos.map(photo => getPhotoMaxSize(photo)));
-    const ids = await loadImagesFromFileIds(allPhotoMaxSizes);
+    if (!extractTextMessage(msg) || msg.from.id === botUser.id) return;
 
-    console.log(`Received album ${groupId} with ${ids.length} photos.`);
-    console.log("File IDs:", ids);
-
-    albumCache.delete(groupId);
-    return ids;
+    await MessageStore.put(msg);
 }
 
-export function photoPathByUniqueId(uniqueId: string): string {
-    return path.join(Environment.DATA_PATH, "photo", uniqueId + ".jpg");
+export async function processInlineQuery(query: InlineQuery): Promise<void> {
+    console.log("InlineQuery", query);
+
+    if (Environment.CREATOR_ID !== query.from.id) {
+        await bot.answerInlineQuery({
+            inline_query_id: query.id,
+            results: [],
+            button: {
+                text: "No access",
+                start_parameter: "nope"
+            }
+        }).catch(logError);
+        return;
+    }
+
+    if (query.query.trim().length !== 0) {
+        try {
+            const queryResults: InlineQueryResult[] = [];
+            const results = await ollama.webSearch({query: query.query});
+
+            console.log("results", results);
+
+            results.results.forEach((result, i) => {
+                const r = result as WebSearchResponse;
+                queryResults.push({
+                    type: "article",
+                    id: `${i}`,
+                    title: `${r.title}`,
+                    input_message_content: {
+                        message_text: `${r.title}\n\n${r.url}`
+                    }
+                });
+            });
+
+            await bot.answerInlineQuery({
+                inline_query_id: query.id,
+                results: queryResults,
+            });
+        } catch (e) {
+            logError(e);
+        }
+    } else {
+        await bot.answerInlineQuery({
+            inline_query_id: query.id,
+            results: [],
+        }).catch(logError);
+    }
+}
+
+export async function processCallbackQuery(query: CallbackQuery): Promise<void> {
+    console.log("CallbackQuery", query);
+    await findAndExecuteCallbackCommand(callbackCommands, query);
 }
