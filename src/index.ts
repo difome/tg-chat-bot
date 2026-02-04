@@ -92,7 +92,7 @@ export let botUser: User;
 
 export const googleAi = new GoogleGenAI({apiKey: Environment.GEMINI_API_KEY});
 export const mistralAi = new Mistral({apiKey: Environment.MISTRAL_API_KEY});
-export const openAi = new OpenAI({apiKey: Environment.OPENAI_API_KEY});
+export const openAi = new OpenAI({apiKey: Environment.OPENAI_API_KEY, baseURL: Environment.OPENAI_BASE_URL});
 
 export const ollama = new Ollama({
     host: Environment.OLLAMA_ADDRESS,

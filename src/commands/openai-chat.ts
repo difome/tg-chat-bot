@@ -39,7 +39,7 @@ export class OpenAIChat extends ChatCommand {
         const chatMessages = messageParts.map(part => {
             const content = [];
             content.push({
-                type: "input_text",
+                type: part.bot ? "output_text" : "input_text",
                 text: (Environment.USE_NAMES_IN_PROMPT && !part.bot ? `MESSAGE FROM USER "${part.name}":\n` : "") + part.content,
             });
 
